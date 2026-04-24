@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Chatbot } from "@/components/chat/Chatbot";
-import NextTopLoader from "nextjs-toploader";
+import NextTopLoader from "nextjs-toploader"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,14 +38,14 @@ export const metadata: Metadata = {
     "Akademik",
     "Kampus Cirebon",
     "Teknik Informatika",
-    "Rekayasa Perangkat Lunak",
+    "Rekayasa Perangkat Lunak"
   ],
   authors: [{ name: "Azharangga Kusuma" }],
   creator: "Azharangga Kusuma",
   publisher: "Azharangga Kusuma",
-
+  
   icons: {
-    icon: "/img/logo-ikmi.png",
+    icon: "/img/logo-ikmi.png", 
     shortcut: "/img/logo-ikmi.png",
     apple: "/img/logo-ikmi.png",
   },
@@ -86,16 +86,17 @@ export default function RootLayout({
       >
         <NextTopLoader
           color="#1B3F95"
-          initialPosition={0.1}
-          crawlSpeed={150}
-          height={4}
+          initialPosition={0.08}
+          crawlSpeed={200}
+          height={3}
           crawl={true}
           showSpinner={false}
-          easing="cubic-bezier(0.24, 0.22, 0.015, 1.2)"
-          speed={400}
+          easing="ease"
+          speed={200}
           shadow="0 0 15px #1B3F95, 0 0 10px #1B3F95, 0 0 5px #1B3F95"
           zIndex={1600}
         />
+        
         {children}
         <Toaster />
         <Chatbot />
