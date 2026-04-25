@@ -104,8 +104,6 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: modelMessages,
       tools: availableTools,
-      temperature: 0.7,
-      maxTokens: 1024,
       onError: async ({ error }) => {
         const errStatus = (error as any)?.status;
         const errMessage = String(
