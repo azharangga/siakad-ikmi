@@ -104,9 +104,8 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: modelMessages,
       tools: availableTools,
-      maxToolRoundtrips: 5, // Batasi maksimal 5 tool roundtrips
-      temperature: 0.7, // Lebih fokus, kurangi kreativitas berlebihan
-      maxTokens: 1024, // Batasi output maksimal 1024 token (hemat biaya)
+      temperature: 0.7,
+      maxTokens: 1024,
       onError: async ({ error }) => {
         const errStatus = (error as any)?.status;
         const errMessage = String(
