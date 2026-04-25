@@ -250,14 +250,19 @@ function buildTools(user: any) {
           
           if (error || !data) return { error: 'Data tidak ditemukan' };
           
+          // Handle study_programs yang bisa array atau object
+          const studyProgram = Array.isArray(data.study_programs) 
+            ? data.study_programs[0] 
+            : data.study_programs;
+          
           return {
             nim: data.nim,
             nama: data.nama,
             angkatan: data.angkatan,
             semester: data.semester,
             status: data.status,
-            prodi: data.study_programs?.nama,
-            jenjang: data.study_programs?.jenjang,
+            prodi: studyProgram?.nama,
+            jenjang: studyProgram?.jenjang,
           };
         },
       }),
@@ -536,14 +541,20 @@ function buildTools(user: any) {
         }
 
         return { 
-          hasil: data.map((s: any) => ({
-            nim: s.nim,
-            nama: s.nama,
-            semester: s.semester,
-            angkatan: s.angkatan,
-            status: s.is_active ? 'Aktif' : 'Tidak Aktif',
-            prodi: `${s.study_programs?.nama} (${s.study_programs?.jenjang})`,
-          }))
+          hasil: data.map((s: any) => {
+            const studyProgram = Array.isArray(s.study_programs) 
+              ? s.study_programs[0] 
+              : s.study_programs;
+            
+            return {
+              nim: s.nim,
+              nama: s.nama,
+              semester: s.semester,
+              angkatan: s.angkatan,
+              status: s.is_active ? 'Aktif' : 'Tidak Aktif',
+              prodi: studyProgram ? `${studyProgram.nama} (${studyProgram.jenjang})` : '-',
+            };
+          })
         };
       }
     }),
@@ -562,6 +573,11 @@ function buildTools(user: any) {
           .single();
         
         if (stdErr || !student) return { error: 'Mahasiswa tidak ditemukan' };
+
+        // Handle study_programs yang bisa array atau object
+        const studyProgram = Array.isArray(student.study_programs) 
+          ? student.study_programs[0] 
+          : student.study_programs;
 
         // 2. Hitung IPK
         const { data: grades } = await supabase
@@ -591,8 +607,8 @@ function buildTools(user: any) {
           nama: student.nama,
           angkatan: student.angkatan,
           semester: student.semester,
-          prodi: student.study_programs?.nama,
-          jenjang: student.study_programs?.jenjang,
+          prodi: studyProgram?.nama,
+          jenjang: studyProgram?.jenjang,
           status: student.is_active ? 'Aktif' : 'Tidak Aktif',
           ipk: ipk,
           sks_lulus: sksLulus,
@@ -742,11 +758,16 @@ function buildTools(user: any) {
 
             const ipk = totalSKS > 0 ? totalMutu / totalSKS : 0;
 
+            // Handle study_programs yang bisa array atau object
+            const studyProgram = Array.isArray(s.study_programs) 
+              ? s.study_programs[0] 
+              : s.study_programs;
+
             return {
               nim: s.nim,
               nama: s.nama,
               semester: s.semester,
-              prodi: s.study_programs?.nama,
+              prodi: studyProgram?.nama,
               ipk: ipk.toFixed(2),
               ipk_raw: ipk,
             };
