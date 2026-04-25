@@ -369,3 +369,58 @@ export interface StudentMBKMFormValues {
   mitra: string;
   lokasi: string;
 }
+
+// =========================================
+// PREDIKAT YUDISIUM (MASTERDATA)
+// =========================================
+export interface PredikatYudisium {
+  id: string;
+  label: string;       // e.g. "Memuaskan"
+  ipk_min: number;     // e.g. 2.00
+  ipk_max: number;     // e.g. 2.99
+  urutan: number;      // untuk sorting
+}
+
+export interface PredikatYudisiumFormValues {
+  label: string;
+  ipk_min: number | string;
+  ipk_max: number | string;
+  urutan: number | string;
+}
+
+// =========================================
+// JADWAL SIDANG SKRIPSI
+// =========================================
+export interface SidangSkripsi {
+  id: string;
+  student_id: string;
+  tanggal_sidang: string;   // ISO date string
+  hari_sidang: string;
+  ruangan?: string | null;
+  waktu_mulai?: string | null;
+  waktu_selesai?: string | null;
+  catatan?: string | null;
+  created_at?: string;
+  updated_at?: string;
+
+  // Relations
+  student?: {
+    id: string;
+    nim: string;
+    nama: string;
+    study_program?: {
+      nama: string;
+      jenjang: string;
+    } | null;
+  } | null;
+}
+
+export interface SidangSkripsiFormValues {
+  student_id: string;
+  tanggal_sidang: string;
+  hari_sidang: string;
+  ruangan?: string;
+  waktu_mulai?: string;
+  waktu_selesai?: string;
+  catatan?: string;
+}

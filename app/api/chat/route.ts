@@ -104,7 +104,9 @@ export async function POST(req: Request) {
       system: systemPrompt,
       messages: modelMessages,
       tools: availableTools,
-      stopWhen: stepCountIs(5),
+      maxSteps: 5, // Batasi maksimal 5 langkah tool calls
+      temperature: 0.7, // Lebih fokus, kurangi kreativitas berlebihan
+      maxTokens: 1024, // Batasi output maksimal 1024 token (hemat biaya)
       onError: async ({ error }) => {
         const errStatus = (error as any)?.status;
         const errMessage = String(
@@ -179,49 +181,58 @@ export async function POST(req: Request) {
 // PROMPT OPTIMIZATION (Hemat Token)
 // =====================================
 function buildSystemPrompt(user: any): string {
-  // Hanya masukkan instruksi inti yang relevan agar menghemat ratusan token
-  const base = `Kamu asisten SIAKAD IKMI Cirebon. Aturan:
-1. Bhs Indonesia ramah & rapi (Markdown).
-2. Jawaban singkat, padat, berdasar data tools.
-3. Jangan sebut kamu pakai tools.
-Standar Akademik: A=4, B=3, C=2, D=1, E=0. Lulus: S1(144SKS), D3(108SKS).`;
+  // Instruksi super ringkas untuk hemat token
+  const base = `Asisten SIAKAD IKMI Cirebon. Aturan:
+- Bahasa Indonesia ramah, format Markdown
+- Jawaban SINGKAT & PADAT dari data tools
+- JANGAN sebut "menggunakan tools" atau teknis internal
+- Standar: A=4, B=3, C=2, D=1, E=0. Lulus: S1=144SKS, D3=108SKS
+- Jika data kosong/error, bilang "Data belum tersedia" (jangan teknis)`;
 
   if (user.role === 'mahasiswa') {
     return `${base}
-Bicara dgn mahasiswa: ${user.name} (${user.username}). 
-Gunakan data tools (Profil, KHS per semester, Transkrip kumulatif, KRS). Beda KHS (1 smst) & Transkrip (semua).`;
+User: Mahasiswa ${user.name} (NIM: ${user.username})
+Tools: Profil, KHS (nilai 1 semester), Transkrip (IPK kumulatif), KRS (matkul diambil)`;
   }
   if (user.role === 'dosen') {
     return `${base}
-Bicara dgn Dosen: ${user.name} (${user.username}).
-Gunakan data tools Statistik, Daftar Mhs/Dosen/Matkul.`;
+User: Dosen ${user.name} (${user.username})
+Tools: Statistik, Cari Mahasiswa/Dosen/Matkul`;
   }
   return `${base}
-Admin: ${user.name} (${user.username}). Punya akses semua fitur (Statistik, Profil Data).`;
+User: Admin ${user.name} (${user.username})
+Akses: Semua data (Statistik, Profil, Pencarian)`;
 }
 
 // =====================================
-// TOOLS OPTIMIZATION (Batas Data Respons Terlalu Besar)
+// TOOLS OPTIMIZATION (Hemat Token & Fix Query)
 // =====================================
 function buildTools(user: any) {
   const isMahasiswa = user.role === 'mahasiswa';
 
   const baseTools: Record<string, any> = {
     getInfoProdi: tool({
-      description: 'Ambil prodi',
+      description: 'Daftar program studi',
       inputSchema: z.object({}),
       execute: async () => {
-        const { data } = await supabase.from('study_programs').select('kode,nama,jenjang');
-        return data; // Hilangkan bungkus property untuk hemat token JSON
+        const { data } = await supabase
+          .from('study_programs')
+          .select('kode,nama,jenjang')
+          .order('nama');
+        return data || [];
       },
     }),
 
     getTahunAkademik: tool({
-      description: 'Ambil tahun akademik 5 terbaru', // Limit 5 dari 10
+      description: 'Tahun akademik terbaru',
       inputSchema: z.object({}),
       execute: async () => {
-        const { data } = await supabase.from('academic_years').select('nama,semester,is_active').order('nama', { ascending: false }).limit(5);
-        return data;
+        const { data } = await supabase
+          .from('academic_years')
+          .select('nama,semester,is_active')
+          .order('nama', { ascending: false })
+          .limit(5);
+        return data || [];
       },
     }),
   };
@@ -229,92 +240,534 @@ function buildTools(user: any) {
   if (isMahasiswa) {
     return {
       ...baseTools,
+      
       getProfilSaya: tool({
-        description: 'Biodata mhs login',
+        description: 'Biodata mahasiswa login',
         inputSchema: z.object({}),
         execute: async () => {
-          const { data } = await supabase.from('students').select('nim,nama,angkatan,semester,status,study_programs(nama,jenjang)').eq('nim', user.username).single();
-          return data;
+          const { data, error } = await supabase
+            .from('students')
+            .select('nim,nama,angkatan,semester,status,alamat,study_programs(nama,jenjang)')
+            .eq('nim', user.username)
+            .single();
+          
+          if (error || !data) return { error: 'Data tidak ditemukan' };
+          
+          return {
+            nim: data.nim,
+            nama: data.nama,
+            angkatan: data.angkatan,
+            semester: data.semester,
+            status: data.status,
+            prodi: data.study_programs?.nama,
+            jenjang: data.study_programs?.jenjang,
+          };
         },
       }),
 
       getKHSSaya: tool({
-        description: 'Lihat KHS (nilai 1 smst)',
-        inputSchema: z.object({ semester: z.number().optional() }),
+        description: 'KHS (Kartu Hasil Studi) per semester - nilai 1 semester saja',
+        inputSchema: z.object({ 
+          semester: z.number().optional().describe('Semester yang ingin dilihat (opsional, default semester aktif)')
+        }),
         execute: async ({ semester }: { semester?: number }) => {
-          const { data: std } = await supabase.from('students').select('id,semester').eq('nim', user.username).single();
-          if (!std) return { err: 'Mhs tdk valid' };
+          // 1. Ambil data mahasiswa
+          const { data: student, error: stdErr } = await supabase
+            .from('students')
+            .select('id,semester')
+            .eq('nim', user.username)
+            .single();
+          
+          if (stdErr || !student) return { error: 'Mahasiswa tidak ditemukan' };
 
-          const tgt = semester || std.semester || 1;
-          const { data: grds } = await supabase.from('grades').select('hm,courses:course_id(matkul,sks,smt_default)').eq('student_id', std.id);
-          const sGrds = (grds || []).filter((g: any) => g.courses?.smt_default === tgt);
+          const targetSmt = semester || student.semester || 1;
 
-          // Hemat return object format
-          const res = sGrds.map((g: any) => ({
-            mk: g.courses?.matkul,
-            sks: g.courses?.sks,
-            hm: g.hm
-          }));
-          return { smt: tgt, mk: res };
+          // 2. Ambil nilai semester target
+          const { data: grades, error: gradeErr } = await supabase
+            .from('grades')
+            .select(`
+              hm,
+              courses:course_id(matkul,sks,smt_default)
+            `)
+            .eq('student_id', student.id);
+
+          if (gradeErr || !grades) return { error: 'Nilai tidak ditemukan' };
+
+          // Filter semester target
+          const semesterGrades = grades.filter((g: any) => 
+            g.courses?.smt_default === targetSmt && g.hm !== '-'
+          );
+
+          if (semesterGrades.length === 0) {
+            return { 
+              semester: targetSmt, 
+              matakuliah: [], 
+              pesan: `Belum ada nilai di semester ${targetSmt}` 
+            };
+          }
+
+          // Hitung IPS
+          let totalSKS = 0;
+          let totalMutu = 0;
+          const matakuliah = semesterGrades.map((g: any) => {
+            const sks = g.courses?.sks || 0;
+            const am = getAM(g.hm);
+            totalSKS += sks;
+            totalMutu += am * sks;
+            return {
+              matkul: g.courses?.matkul,
+              sks: sks,
+              nilai: g.hm,
+            };
+          });
+
+          const ips = totalSKS > 0 ? (totalMutu / totalSKS).toFixed(2) : '0.00';
+
+          return {
+            semester: targetSmt,
+            ips: ips,
+            total_sks: totalSKS,
+            matakuliah: matakuliah.slice(0, 20), // Max 20 untuk hemat token
+          };
         },
       }),
 
       getTranskripSaya: tool({
-        description: 'Transkrip semua nilai (IPK)',
+        description: 'Transkrip nilai lengkap (semua semester) dengan IPK kumulatif',
         inputSchema: z.object({}),
         execute: async () => {
-          const { data: std } = await supabase.from('students').select('id').eq('nim', user.username).single();
-          if (!std) return { err: 'Err' };
-          const { data: grds } = await supabase.from('grades').select('hm,courses:course_id(matkul,sks)').eq('student_id', std.id);
+          // 1. Ambil student_id
+          const { data: student, error: stdErr } = await supabase
+            .from('students')
+            .select('id')
+            .eq('nim', user.username)
+            .single();
+          
+          if (stdErr || !student) return { error: 'Mahasiswa tidak ditemukan' };
 
-          let ts = 0, tn = 0;
-          const list = (grds || []).map((g: any) => {
-            const m = g.courses; const amu = getAM(g.hm);
-            if (amu >= 2) ts += m.sks;
-            tn += amu * m.sks;
-            return { mk: m.matkul, sks: m.sks, nilai: g.hm };
+          // 2. Ambil semua nilai
+          const { data: grades, error: gradeErr } = await supabase
+            .from('grades')
+            .select(`
+              hm,
+              courses:course_id(kode,matkul,sks,smt_default)
+            `)
+            .eq('student_id', student.id);
+
+          if (gradeErr || !grades || grades.length === 0) {
+            return { error: 'Belum ada nilai' };
+          }
+
+          // Filter nilai yang sudah ada (bukan strip)
+          const validGrades = grades.filter((g: any) => g.hm && g.hm !== '-');
+
+          // Deduplikasi: ambil nilai terbaik per matkul (untuk mengulang)
+          const bestGrades = new Map<string, any>();
+          validGrades.forEach((g: any) => {
+            const kode = g.courses?.kode;
+            if (!kode) return;
+            
+            const am = getAM(g.hm);
+            const existing = bestGrades.get(kode);
+            
+            if (!existing || am > getAM(existing.hm)) {
+              bestGrades.set(kode, g);
+            }
           });
-          const allSks = (grds || []).reduce((a: any, c: any) => a + c.courses.sks, 0);
-          return { ipk: allSks ? (tn / allSks).toFixed(2) : 0, sks: ts, ls: list.slice(0, 15) }; // Limit list 15 max jk terlalu besar
+
+          // Hitung IPK & Total SKS Lulus
+          let totalSKS = 0;
+          let totalMutu = 0;
+          let sksLulus = 0;
+
+          const matakuliah = Array.from(bestGrades.values()).map((g: any) => {
+            const sks = g.courses?.sks || 0;
+            const am = getAM(g.hm);
+            totalSKS += sks;
+            totalMutu += am * sks;
+            if (am >= 2) sksLulus += sks; // C ke atas = lulus
+            
+            return {
+              smt: g.courses?.smt_default,
+              matkul: g.courses?.matkul,
+              sks: sks,
+              nilai: g.hm,
+            };
+          });
+
+          const ipk = totalSKS > 0 ? (totalMutu / totalSKS).toFixed(2) : '0.00';
+
+          return {
+            ipk: ipk,
+            sks_lulus: sksLulus,
+            total_matkul: matakuliah.length,
+            matakuliah: matakuliah.slice(0, 25), // Max 25 untuk hemat token
+            catatan: matakuliah.length > 25 ? 'Hanya 25 matkul pertama ditampilkan' : null,
+          };
         },
       }),
 
       getKRSSaya: tool({
-        description: 'KRS aktif',
+        description: 'KRS (Kartu Rencana Studi) - mata kuliah yang diambil semester ini',
         inputSchema: z.object({}),
         execute: async () => {
-          const { data: std } = await supabase.from('students').select('id').eq('nim', user.username).single();
-          const { data: y } = await supabase.from('academic_years').select('id,nama').eq('is_active', true).single();
-          if (!y || !std) return { err: 'Err' };
-          const { data: k } = await supabase.from('krs').select('courses:course_id(matkul,sks)').eq('student_id', std.id).eq('academic_year_id', y.id);
-          return { thn: y.nama, mk: k?.map((x: any) => x.courses) };
+          // 1. Ambil student_id
+          const { data: student, error: stdErr } = await supabase
+            .from('students')
+            .select('id')
+            .eq('nim', user.username)
+            .single();
+          
+          if (stdErr || !student) return { error: 'Mahasiswa tidak ditemukan' };
+
+          // 2. Ambil tahun akademik aktif
+          const { data: activeYear, error: yearErr } = await supabase
+            .from('academic_years')
+            .select('id,nama,semester')
+            .eq('is_active', true)
+            .single();
+
+          if (yearErr || !activeYear) {
+            return { error: 'Tahun akademik aktif tidak ditemukan' };
+          }
+
+          // 3. Ambil KRS
+          const { data: krs, error: krsErr } = await supabase
+            .from('krs')
+            .select(`
+              status,
+              courses:course_id(matkul,sks)
+            `)
+            .eq('student_id', student.id)
+            .eq('academic_year_id', activeYear.id);
+
+          if (krsErr || !krs || krs.length === 0) {
+            return { 
+              tahun_akademik: activeYear.nama,
+              semester: activeYear.semester,
+              matakuliah: [],
+              pesan: 'Belum ada KRS'
+            };
+          }
+
+          const totalSKS = krs.reduce((sum: number, k: any) => sum + (k.courses?.sks || 0), 0);
+
+          return {
+            tahun_akademik: activeYear.nama,
+            semester: activeYear.semester,
+            total_sks: totalSKS,
+            matakuliah: krs.map((k: any) => ({
+              matkul: k.courses?.matkul,
+              sks: k.courses?.sks,
+              status: k.status,
+            })),
+          };
         }
       })
     };
   }
 
-  // Admin Tools (Batasi response)
+  // Admin/Dosen Tools
   return {
     ...baseTools,
+    
     getStatistik: tool({
-      description: 'Statistik SIAKAD',
+      description: 'Statistik umum SIAKAD (total mahasiswa, dosen, mata kuliah)',
       inputSchema: z.object({}),
       execute: async () => {
-        const [m, d, c] = await Promise.all([
+        const [mhs, mhsAktif, dsn, mk, prodi] = await Promise.all([
           supabase.from('students').select('id', { count: 'exact', head: true }),
+          supabase.from('students').select('id', { count: 'exact', head: true }).eq('is_active', true),
           supabase.from('lecturers').select('id', { count: 'exact', head: true }).eq('is_active', true),
           supabase.from('courses').select('id', { count: 'exact', head: true }),
+          supabase.from('study_programs').select('id', { count: 'exact', head: true }),
         ]);
-        return { mhs: m.count, dsn: d.count, mk: c.count };
+        return { 
+          total_mahasiswa: mhs.count || 0,
+          mahasiswa_aktif: mhsAktif.count || 0, 
+          total_dosen: dsn.count || 0, 
+          total_matakuliah: mk.count || 0,
+          total_prodi: prodi.count || 0,
+        };
       }
     }),
-    cariMahasiswa: tool({
-      description: 'Cari mhs',
-      inputSchema: z.object({ kw: z.string() }),
-      execute: async ({ kw }: { kw: string }) => {
-        const { data } = await supabase.from('students').select('nim,nama').ilike(/^\d+$/.test(kw) ? 'nim' : 'nama', `%${kw}%`).limit(3); // Batasi max 3 biar hemat token
-        return data;
+
+    getStatistikProdi: tool({
+      description: 'Statistik mahasiswa per program studi',
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { data: prodi } = await supabase
+          .from('study_programs')
+          .select('id,nama,jenjang');
+        
+        if (!prodi) return { error: 'Data tidak ditemukan' };
+
+        const stats = await Promise.all(
+          prodi.map(async (p: any) => {
+            const { count } = await supabase
+              .from('students')
+              .select('id', { count: 'exact', head: true })
+              .eq('study_program_id', p.id)
+              .eq('is_active', true);
+            return {
+              prodi: p.nama,
+              jenjang: p.jenjang,
+              jumlah_mahasiswa: count || 0,
+            };
+          })
+        );
+
+        return { data: stats };
       }
-    })
+    }),
+
+    cariMahasiswa: tool({
+      description: 'Cari mahasiswa berdasarkan nama atau NIM',
+      inputSchema: z.object({ 
+        keyword: z.string().describe('Nama atau NIM mahasiswa yang dicari')
+      }),
+      execute: async ({ keyword }: { keyword: string }) => {
+        const isNIM = /^\d+$/.test(keyword);
+        const { data } = await supabase
+          .from('students')
+          .select('nim,nama,semester,angkatan,is_active,study_programs(nama,jenjang)')
+          .ilike(isNIM ? 'nim' : 'nama', `%${keyword}%`)
+          .limit(5);
+        
+        if (!data || data.length === 0) {
+          return { hasil: [], pesan: 'Tidak ditemukan' };
+        }
+
+        return { 
+          hasil: data.map((s: any) => ({
+            nim: s.nim,
+            nama: s.nama,
+            semester: s.semester,
+            angkatan: s.angkatan,
+            status: s.is_active ? 'Aktif' : 'Tidak Aktif',
+            prodi: `${s.study_programs?.nama} (${s.study_programs?.jenjang})`,
+          }))
+        };
+      }
+    }),
+
+    getDetailMahasiswa: tool({
+      description: 'Detail lengkap mahasiswa tertentu (biodata + IPK)',
+      inputSchema: z.object({ 
+        nim: z.string().describe('NIM mahasiswa yang ingin dilihat detailnya')
+      }),
+      execute: async ({ nim }: { nim: string }) => {
+        // 1. Ambil biodata
+        const { data: student, error: stdErr } = await supabase
+          .from('students')
+          .select('id,nim,nama,angkatan,semester,alamat,is_active,study_programs(nama,jenjang)')
+          .eq('nim', nim)
+          .single();
+        
+        if (stdErr || !student) return { error: 'Mahasiswa tidak ditemukan' };
+
+        // 2. Hitung IPK
+        const { data: grades } = await supabase
+          .from('grades')
+          .select('hm,courses:course_id(sks)')
+          .eq('student_id', student.id);
+
+        let totalSKS = 0;
+        let totalMutu = 0;
+        let sksLulus = 0;
+
+        if (grades && grades.length > 0) {
+          const validGrades = grades.filter((g: any) => g.hm && g.hm !== '-');
+          validGrades.forEach((g: any) => {
+            const sks = g.courses?.sks || 0;
+            const am = getAM(g.hm);
+            totalSKS += sks;
+            totalMutu += am * sks;
+            if (am >= 2) sksLulus += sks;
+          });
+        }
+
+        const ipk = totalSKS > 0 ? (totalMutu / totalSKS).toFixed(2) : '0.00';
+
+        return {
+          nim: student.nim,
+          nama: student.nama,
+          angkatan: student.angkatan,
+          semester: student.semester,
+          prodi: student.study_programs?.nama,
+          jenjang: student.study_programs?.jenjang,
+          status: student.is_active ? 'Aktif' : 'Tidak Aktif',
+          ipk: ipk,
+          sks_lulus: sksLulus,
+          total_matkul: grades?.length || 0,
+        };
+      }
+    }),
+
+    cariDosen: tool({
+      description: 'Cari dosen berdasarkan nama atau NIDN',
+      inputSchema: z.object({ 
+        keyword: z.string().describe('Nama atau NIDN dosen yang dicari')
+      }),
+      execute: async ({ keyword }: { keyword: string }) => {
+        const isNIDN = /^\d+$/.test(keyword);
+        const { data } = await supabase
+          .from('lecturers')
+          .select('nidn,nama,email,phone,is_active')
+          .ilike(isNIDN ? 'nidn' : 'nama', `%${keyword}%`)
+          .limit(5);
+        
+        if (!data || data.length === 0) {
+          return { hasil: [], pesan: 'Tidak ditemukan' };
+        }
+
+        return { 
+          hasil: data.map((d: any) => ({
+            nidn: d.nidn || '-',
+            nama: d.nama,
+            email: d.email || '-',
+            phone: d.phone || '-',
+            status: d.is_active ? 'Aktif' : 'Tidak Aktif',
+          }))
+        };
+      }
+    }),
+
+    cariMatakuliah: tool({
+      description: 'Cari mata kuliah berdasarkan nama atau kode',
+      inputSchema: z.object({ 
+        keyword: z.string().describe('Nama atau kode mata kuliah yang dicari')
+      }),
+      execute: async ({ keyword }: { keyword: string }) => {
+        const isKode = /^[A-Z]{2,4}/.test(keyword.toUpperCase());
+        const { data } = await supabase
+          .from('courses')
+          .select('kode,matkul,sks,smt_default,kategori')
+          .ilike(isKode ? 'kode' : 'matkul', `%${keyword}%`)
+          .limit(8);
+        
+        if (!data || data.length === 0) {
+          return { hasil: [], pesan: 'Tidak ditemukan' };
+        }
+
+        return { 
+          hasil: data.map((mk: any) => ({
+            kode: mk.kode,
+            nama: mk.matkul,
+            sks: mk.sks,
+            semester: mk.smt_default,
+            kategori: mk.kategori,
+          }))
+        };
+      }
+    }),
+
+    getMahasiswaByProdi: tool({
+      description: 'Daftar mahasiswa berdasarkan program studi tertentu',
+      inputSchema: z.object({ 
+        prodi: z.string().describe('Nama program studi (contoh: Sistem Informasi, Teknik Informatika)')
+      }),
+      execute: async ({ prodi }: { prodi: string }) => {
+        // Cari prodi dulu
+        const { data: prodiData } = await supabase
+          .from('study_programs')
+          .select('id,nama,jenjang')
+          .ilike('nama', `%${prodi}%`)
+          .limit(1)
+          .single();
+
+        if (!prodiData) return { error: 'Program studi tidak ditemukan' };
+
+        // Ambil mahasiswa
+        const { data: students } = await supabase
+          .from('students')
+          .select('nim,nama,semester,angkatan')
+          .eq('study_program_id', prodiData.id)
+          .eq('is_active', true)
+          .order('angkatan', { ascending: false })
+          .limit(10);
+
+        if (!students || students.length === 0) {
+          return { 
+            prodi: prodiData.nama,
+            jenjang: prodiData.jenjang,
+            mahasiswa: [],
+            pesan: 'Belum ada mahasiswa'
+          };
+        }
+
+        return {
+          prodi: prodiData.nama,
+          jenjang: prodiData.jenjang,
+          total: students.length,
+          mahasiswa: students,
+          catatan: students.length === 10 ? 'Hanya 10 mahasiswa pertama ditampilkan' : null,
+        };
+      }
+    }),
+
+    getTopMahasiswa: tool({
+      description: 'Daftar mahasiswa dengan IPK tertinggi',
+      inputSchema: z.object({ 
+        limit: z.number().optional().describe('Jumlah mahasiswa yang ditampilkan (default 5)')
+      }),
+      execute: async ({ limit = 5 }: { limit?: number }) => {
+        // Ambil semua mahasiswa aktif
+        const { data: students } = await supabase
+          .from('students')
+          .select('id,nim,nama,semester,study_programs(nama)')
+          .eq('is_active', true);
+
+        if (!students || students.length === 0) {
+          return { error: 'Data tidak ditemukan' };
+        }
+
+        // Hitung IPK masing-masing
+        const studentsWithIPK = await Promise.all(
+          students.map(async (s: any) => {
+            const { data: grades } = await supabase
+              .from('grades')
+              .select('hm,courses:course_id(sks)')
+              .eq('student_id', s.id);
+
+            let totalSKS = 0;
+            let totalMutu = 0;
+
+            if (grades && grades.length > 0) {
+              const validGrades = grades.filter((g: any) => g.hm && g.hm !== '-');
+              validGrades.forEach((g: any) => {
+                const sks = g.courses?.sks || 0;
+                const am = getAM(g.hm);
+                totalSKS += sks;
+                totalMutu += am * sks;
+              });
+            }
+
+            const ipk = totalSKS > 0 ? totalMutu / totalSKS : 0;
+
+            return {
+              nim: s.nim,
+              nama: s.nama,
+              semester: s.semester,
+              prodi: s.study_programs?.nama,
+              ipk: ipk.toFixed(2),
+              ipk_raw: ipk,
+            };
+          })
+        );
+
+        // Sort by IPK descending
+        const sorted = studentsWithIPK
+          .filter((s) => s.ipk_raw > 0)
+          .sort((a, b) => b.ipk_raw - a.ipk_raw)
+          .slice(0, Math.min(limit, 10))
+          .map(({ ipk_raw, ...rest }) => rest);
+
+        return {
+          total: sorted.length,
+          mahasiswa: sorted,
+        };
+      }
+    }),
   };
 }

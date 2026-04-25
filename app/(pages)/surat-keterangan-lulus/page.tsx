@@ -1,15 +1,15 @@
 import React from "react";
 import { getSession } from "@/app/actions/auth";
-import { getStudentById, getOfficialForDocument, getStudents } from "@/app/actions/students";
+import { getStudentById, getOfficialForDocument, getStudents, getStudyPrograms } from "@/app/actions/students";
+import { getSidangSkripsi, getSidangByStudentId } from "@/app/actions/sidang-skripsi";
+import { getPredikatYudisium } from "@/app/actions/predikat-yudisium";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Official } from "@/lib/types";
+import { Official, SidangSkripsi, StudentData } from "@/lib/types";
 import SKLClient from "./SKLClient";
 
 async function getKetuaSTMIK(): Promise<Official | null> {
-  const supabaseAdmin = createAdminClient();
-
-  // Cari Ketua STMIK (jabatan mengandung 'Ketua' dan tidak terikat prodi)
-  const { data } = await supabaseAdmin
+  const supabase = createAdminClient();
+  const { data } = await supabase
     .from("officials")
     .select("*, lecturer:lecturers(*), study_program:study_programs(*)")
     .ilike("jabatan", "%Ketua%")
@@ -17,40 +17,60 @@ async function getKetuaSTMIK(): Promise<Official | null> {
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
-
   return (data as unknown as Official) || null;
+}
+
+// Filter mahasiswa yang sudah ada nilai semester 8
+function filterStudentsWithSmt8(students: StudentData[]): StudentData[] {
+  return students.filter((s) =>
+    s.transcript.some((t) => Number(t.smt) === 8 && t.hm !== "-")
+  );
 }
 
 export default async function SKLPage() {
   const user = await getSession();
 
+  const [officialKetua, predikatList] = await Promise.all([
+    getKetuaSTMIK(),
+    getPredikatYudisium(),
+  ]);
+
   let studentData = null;
   let officialKaprodi = null;
-  let officialKetua = null;
-  let allStudents: any[] = [];
-
-  officialKetua = await getKetuaSTMIK();
+  let sidang = null;
+  let allStudents: StudentData[] = [];
+  let studyPrograms: any[] = [];
+  let sidangMap: Record<string, SidangSkripsi> = {};
 
   if (user?.role === "mahasiswa" && user.student_id) {
-    try {
-      studentData = await getStudentById(user.student_id);
-      if (studentData?.profile?.study_program_id) {
-        officialKaprodi = await getOfficialForDocument(studentData.profile.study_program_id);
-      } else {
-        officialKaprodi = await getOfficialForDocument();
-      }
-    } catch (e) {
-      console.error("Failed to fetch student data for SKL", e);
+    const [s, sid] = await Promise.all([
+      getStudentById(user.student_id),
+      getSidangByStudentId(user.student_id),
+    ]);
+    studentData = s;
+    sidang = sid;
+    if (studentData?.profile?.study_program_id) {
+      officialKaprodi = await getOfficialForDocument(studentData.profile.study_program_id);
     }
   } else if (user) {
-    try {
-      allStudents = await getStudents();
-      // Default kaprodi dari mahasiswa pertama
-      if (allStudents[0]?.profile?.study_program_id) {
-        officialKaprodi = await getOfficialForDocument(allStudents[0].profile.study_program_id);
-      }
-    } catch (e) {
-      console.error("Failed to fetch admin data for SKL", e);
+    const [allS, progs, sidangList] = await Promise.all([
+      getStudents(),
+      getStudyPrograms(),
+      getSidangSkripsi(),
+    ]);
+
+    // Hanya mahasiswa dengan nilai semester 8
+    allStudents = filterStudentsWithSmt8(allS);
+    studyPrograms = progs;
+
+    // Build sidang map
+    sidangList.forEach((s) => {
+      sidangMap[s.student_id] = s;
+    });
+
+    // Default kaprodi dari mahasiswa pertama
+    if (allStudents[0]?.profile?.study_program_id) {
+      officialKaprodi = await getOfficialForDocument(allStudents[0].profile.study_program_id);
     }
   }
 
@@ -61,6 +81,10 @@ export default async function SKLPage() {
       officialKaprodi={officialKaprodi}
       officialKetua={officialKetua}
       allStudents={allStudents}
+      studyPrograms={studyPrograms}
+      sidang={sidang}
+      sidangMap={sidangMap}
+      predikatList={predikatList}
     />
   );
 }

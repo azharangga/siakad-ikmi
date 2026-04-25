@@ -13,16 +13,32 @@ import {
   RotateCcw,
   Copy,
   Check,
+  Download,
+  Sparkles,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const SUGGESTIONS = [
-  "Tampilkan KHS semester ini",
-  "Lihat transkrip nilai lengkap saya",
-  "KRS semester ini apa saja?",
   "Tampilkan biodata saya",
+  "Berapa IPK saya sekarang?",
+  "Lihat KHS semester ini",
+  "Apa saja mata kuliah KRS saya?",
+];
+
+const ADMIN_SUGGESTIONS = [
+  "Tampilkan statistik SIAKAD",
+  "Cari mahasiswa dengan IPK tertinggi",
+  "Berapa jumlah mahasiswa per prodi?",
+  "Cari mata kuliah Algoritma",
+];
+
+const DOSEN_SUGGESTIONS = [
+  "Tampilkan statistik mahasiswa",
+  "Cari mahasiswa bernama Ahmad",
+  "Berapa total dosen aktif?",
+  "Daftar mahasiswa Sistem Informasi",
 ];
 
 export function Chatbot() {
@@ -31,6 +47,9 @@ export function Chatbot() {
   const [inputValue, setInputValue] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "online" | "offline">("connecting");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  
   const { messages, sendMessage, status, setMessages } = useChat({
     onError: () => setConnectionStatus("offline"),
   });
@@ -39,6 +58,27 @@ export function Chatbot() {
   const pathname = usePathname();
 
   const isLoading = status !== "ready" && status !== "error";
+
+  // Fetch user role untuk suggestions
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
+        setUserRole(data?.user?.role || 'mahasiswa');
+      } catch {
+        setUserRole('mahasiswa');
+      }
+    };
+    if (isOpen) fetchRole();
+  }, [isOpen]);
+
+  // Dynamic suggestions based on role
+  const suggestions = userRole === 'admin' || userRole === 'superuser' 
+    ? ADMIN_SUGGESTIONS 
+    : userRole === 'dosen' 
+    ? DOSEN_SUGGESTIONS 
+    : SUGGESTIONS;
 
   // Jika chat error (kuota habis, server down), set status offline
   useEffect(() => {
@@ -136,6 +176,24 @@ export function Chatbot() {
     } catch { /* fallback */ }
   };
 
+  const exportChat = () => {
+    const chatText = messages
+      .map((m) => {
+        const text = getMessageText(m.parts);
+        const role = m.role === 'user' ? 'Anda' : 'Bot';
+        return `${role}: ${text}`;
+      })
+      .join('\n\n');
+    
+    const blob = new Blob([chatText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-siakad-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const getMessageText = (parts: any[]) => {
     if (!parts) return "";
     return parts.filter((p: any) => p.type === "text").map((p: any) => p.text).join("");
@@ -195,9 +253,14 @@ export function Chatbot() {
         </div>
         <div className="flex items-center gap-0.5">
           {messages.length > 0 && (
-            <button onClick={() => setMessages([])} className="p-1.5 rounded-lg text-primary-foreground/50 hover:text-primary-foreground hover:bg-white/10 transition-colors" title="Reset chat">
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
+            <>
+              <button onClick={exportChat} className="p-1.5 rounded-lg text-primary-foreground/50 hover:text-primary-foreground hover:bg-white/10 transition-colors" title="Export chat">
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => setMessages([])} className="p-1.5 rounded-lg text-primary-foreground/50 hover:text-primary-foreground hover:bg-white/10 transition-colors" title="Reset chat">
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
           <button onClick={() => setIsExpanded(!isExpanded)} className="p-1.5 rounded-lg text-primary-foreground/50 hover:text-primary-foreground hover:bg-white/10 transition-colors" title={isExpanded ? "Perkecil" : "Perbesar"}>
             {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -217,10 +280,16 @@ export function Chatbot() {
                 <Bot className="w-6 h-6 text-primary" />
               </div>
               <p className="text-sm font-medium text-foreground">Halo! Saya SIAKAD Bot 👋</p>
-              <p className="text-xs text-muted-foreground mt-1">Tanyakan seputar akademik Anda</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {userRole === 'admin' || userRole === 'superuser' 
+                  ? 'Tanyakan statistik atau cari data akademik'
+                  : userRole === 'dosen'
+                  ? 'Tanyakan data mahasiswa atau statistik'
+                  : 'Tanyakan seputar akademik Anda'}
+              </p>
             </div>
             <div className="w-full flex flex-col gap-1.5">
-              {SUGGESTIONS.map((s, i) => (
+              {suggestions.map((s, i) => (
                 <button
                   key={i}
                   onClick={() => handleSend(s)}
@@ -288,7 +357,33 @@ export function Chatbot() {
 
       {/* Input */}
       <div className="px-3 py-2.5 border-t">
+        {/* Quick Actions */}
+        {messages.length > 0 && showQuickActions && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {suggestions.slice(0, 3).map((s, i) => (
+              <button
+                key={i}
+                onClick={() => { handleSend(s); setShowQuickActions(false); }}
+                className="text-[10px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Sparkles className="w-2.5 h-2.5" />
+                {s.length > 30 ? s.slice(0, 30) + '...' : s}
+              </button>
+            ))}
+          </div>
+        )}
+        
         <form onSubmit={handleFormSubmit} className="flex items-end bg-muted/40 rounded-xl border focus-within:border-primary/30 transition-colors">
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowQuickActions(!showQuickActions)}
+              className="p-2 m-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              title="Quick actions"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          )}
           <textarea
             ref={textareaRef}
             className="flex-1 bg-transparent px-3 py-2 outline-none text-sm placeholder:text-muted-foreground/60 resize-none min-h-[36px] max-h-[96px] leading-snug"
