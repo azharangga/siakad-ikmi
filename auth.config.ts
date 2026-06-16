@@ -43,6 +43,7 @@ async function refreshAccessToken(token: any) {
 }
 
 export const authConfig = {
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 1 * 60 * 60, // 1 Jam (3600 detik)

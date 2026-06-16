@@ -2,7 +2,7 @@
 
 import { signIn, signOut, auth } from "@/auth";
 import { AuthError } from "next-auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -51,7 +51,7 @@ export async function authenticate(formData: FormData) {
     let name = "Pengguna";
 
     // Inisialisasi Supabase Client per-request
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Cek nama user untuk feedback UI
     const { data: userFound } = await supabase
@@ -105,7 +105,7 @@ export async function getSession(): Promise<UserSession | null> {
   if (!session?.user) return null;
 
   // Inisialisasi Supabase Client
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Fetch ulang data user untuk mendapatkan avatar terbaru
   const { data: userData } = await supabase
@@ -129,7 +129,7 @@ export async function getSession(): Promise<UserSession | null> {
 
 export async function getUserSettings(username: string) {
   // Inisialisasi Supabase Client
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: user, error } = await supabase
     .from("users")
@@ -159,7 +159,7 @@ export async function updateUserSettings(
   oldPasswordForVerification?: string
 ) {
   // Inisialisasi Supabase Client
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { nama, password, alamat, role, username: newUsername, avatar_url } = payload;
 
