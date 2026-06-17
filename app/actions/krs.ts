@@ -1,9 +1,11 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { KRS, KRSFormValues, Course } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 import { calculateStudentSemester } from "@/lib/academic-utils";
+
+const supabase = createAdminClient();
 
 // Tipe Data Khusus
 export interface CourseOffering extends Course {
@@ -17,8 +19,6 @@ export interface CourseOffering extends Course {
 // ==========================================
 
 export async function validateStudentKrs(studentId: string) {
-  const supabase = await createClient();
-
   try {
     const { data: activeYear, error: yearError } = await supabase
       .from("academic_years")
@@ -56,7 +56,6 @@ export async function validateStudentKrs(studentId: string) {
 }
 
 export async function getStudentSksCount(studentId: string, academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { data, error } = await supabase
       .from("krs")
@@ -81,7 +80,6 @@ export async function getStudentSksCount(studentId: string, academicYearId: stri
 // ==========================================
 
 export async function getKRSByStudent(studentId: string, academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { data, error } = await supabase
       .from("krs")
@@ -103,7 +101,6 @@ export async function getKRSByStudent(studentId: string, academicYearId: string)
 }
 
 export async function getStudentCourseOfferings(studentId: string, academicYearId: string) {
-  const supabase = await createClient();
   try {
     // A. Ambil Data Mahasiswa beserta study_program_id
     const { data: student, error: studentError } = await supabase
@@ -203,7 +200,6 @@ export async function getStudentCourseOfferings(studentId: string, academicYearI
 }
 
 export async function createKRS(payload: KRSFormValues) {
-  const supabase = await createClient();
   try {
     const { data: existing } = await supabase
       .from("krs")
@@ -245,7 +241,6 @@ export async function createKRS(payload: KRSFormValues) {
 }
 
 export async function deleteKRS(id: string) {
-  const supabase = await createClient();
   try {
     const { error } = await supabase.from("krs").delete().eq("id", id);
     if (error) throw error;
@@ -256,7 +251,6 @@ export async function deleteKRS(id: string) {
 }
 
 export async function submitKRS(studentId: string, academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { error } = await supabase
       .from("krs")
@@ -274,7 +268,6 @@ export async function submitKRS(studentId: string, academicYearId: string) {
 }
 
 export async function resetKRS(studentId: string, academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { error } = await supabase
       .from("krs")
@@ -295,7 +288,6 @@ export async function resetKRS(studentId: string, academicYearId: string) {
 // ==========================================
 
 export async function getStudentsWithSubmittedKRS(academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { data: academicYear } = await supabase
       .from("academic_years")
@@ -336,7 +328,6 @@ export async function getStudentsWithSubmittedKRS(academicYearId: string) {
 }
 
 export async function approveKRS(studentId: string, academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { error } = await supabase
       .from("krs")
@@ -354,7 +345,6 @@ export async function approveKRS(studentId: string, academicYearId: string) {
 }
 
 export async function rejectKRS(studentId: string, academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { error } = await supabase
       .from("krs")
@@ -372,7 +362,6 @@ export async function rejectKRS(studentId: string, academicYearId: string) {
 }
 
 export async function approveAllKRS(academicYearId: string) {
-  const supabase = await createClient();
   try {
     const { error } = await supabase
       .from("krs")

@@ -1,8 +1,10 @@
 'use server'
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { Course, CoursePayload } from "@/lib/types";
+
+const supabase = createAdminClient();
 
 // --- HELPER ERROR HANDLING ---
 const handleDbError = (error: any, context: string) => {
@@ -24,7 +26,6 @@ const handleDbError = (error: any, context: string) => {
 
 // Ambil semua mata kuliah beserta relasi program studi
 export async function getCourses() {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from('courses')
     .select(`
@@ -51,8 +52,6 @@ export async function getCourses() {
 
 // Tambah mata kuliah baru dengan relasi program studi
 export async function createCourse(values: CoursePayload) {
-  const supabase = await createClient();
-
   // Insert mata kuliah terlebih dahulu
   const { data: newCourse, error: courseError } = await supabase
     .from('courses')
@@ -101,8 +100,6 @@ export async function createCourse(values: CoursePayload) {
 
 // Update mata kuliah dengan relasi program studi
 export async function updateCourse(id: string, values: CoursePayload) {
-  const supabase = await createClient();
-
   // Update data mata kuliah
   const { error: courseError } = await supabase
     .from('courses')
@@ -154,7 +151,6 @@ export async function updateCourse(id: string, values: CoursePayload) {
 
 // Hapus mata kuliah (relasi junction otomatis terhapus karena ON DELETE CASCADE)
 export async function deleteCourse(id: string) {
-  const supabase = await createClient();
   const { error } = await supabase
     .from('courses')
     .delete()

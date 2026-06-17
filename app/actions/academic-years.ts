@@ -1,12 +1,13 @@
 'use server'
 
-import { createClient } from "@/lib/supabase/server"; 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { AcademicYear, AcademicYearFormValues } from "@/lib/types";
 
+const supabase = createAdminClient();
+
 // --- HELPER: RESET ACTIVE STATUS ---
 const resetActiveStatus = async () => {
-  const supabase = await createClient(); 
   const { error } = await supabase
     .from('academic_years')
     .update({ is_active: false })
@@ -18,7 +19,6 @@ const resetActiveStatus = async () => {
 // --- CRUD OPERATIONS ---
 
 export async function getAcademicYears() {
-  const supabase = await createClient(); 
   const { data, error } = await supabase
     .from('academic_years')
     .select('*')
@@ -32,8 +32,6 @@ export async function getAcademicYears() {
 }
 
 export async function createAcademicYear(values: AcademicYearFormValues) {
-  const supabase = await createClient(); 
-  
   if (values.is_active) {
     await resetActiveStatus();
   }
@@ -51,8 +49,6 @@ export async function createAcademicYear(values: AcademicYearFormValues) {
 }
 
 export async function updateAcademicYear(id: string, values: AcademicYearFormValues) {
-  const supabase = await createClient(); 
-  
   if (values.is_active) {
     await resetActiveStatus();
   }
@@ -71,7 +67,6 @@ export async function updateAcademicYear(id: string, values: AcademicYearFormVal
 }
 
 export async function deleteAcademicYear(id: string) {
-  const supabase = await createClient(); 
   const { error } = await supabase
     .from('academic_years')
     .delete()

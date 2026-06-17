@@ -1,8 +1,10 @@
 'use server'
 
-import { createClient } from "@/lib/supabase/server"; 
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { StudyProgram, StudyProgramFormValues } from "@/lib/types";
+
+const supabase = createAdminClient();
 
 // --- HELPER ERROR HANDLING ---
 const handleDbError = (error: any, context: string) => {
@@ -24,7 +26,6 @@ const handleDbError = (error: any, context: string) => {
 
 // Ambil semua prodi
 export async function getStudyPrograms() {
-  const supabase = await createClient(); 
   const { data, error } = await supabase
     .from('study_programs')
     .select('*')
@@ -39,7 +40,6 @@ export async function getStudyPrograms() {
 
 // Tambah prodi
 export async function createStudyProgram(values: StudyProgramFormValues) {
-  const supabase = await createClient(); 
   const { error } = await supabase
     .from('study_programs')
     .insert([{
@@ -54,7 +54,6 @@ export async function createStudyProgram(values: StudyProgramFormValues) {
 
 // Update prodi
 export async function updateStudyProgram(id: string, values: StudyProgramFormValues) {
-  const supabase = await createClient(); 
   const { error } = await supabase
     .from('study_programs')
     .update({
@@ -70,7 +69,6 @@ export async function updateStudyProgram(id: string, values: StudyProgramFormVal
 
 // Hapus prodi
 export async function deleteStudyProgram(id: string) {
-  const supabase = await createClient(); 
   const { error } = await supabase
     .from('study_programs')
     .delete()

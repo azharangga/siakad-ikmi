@@ -1,9 +1,10 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const supabase = createAdminClient();
 
 export async function checkSystemHealth() {
-  const supabase = await createClient();
   const start = Date.now();
 
   try {
@@ -53,8 +54,6 @@ export async function checkSystemHealth() {
 }
 
 export async function getSystemResources() {
-  const supabase = await createClient();
-
   try {
     // 1. Get Database Size (Requires RPC: get_database_size)
     // Fallback if RPC not exists is handled by error check

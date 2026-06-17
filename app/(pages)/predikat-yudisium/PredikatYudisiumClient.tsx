@@ -106,11 +106,6 @@ export default function PredikatYudisiumClient({ initialData }: Props) {
       render: (_, i) => <span className="text-muted-foreground">{startIndex + i + 1}</span>,
     },
     {
-      header: "Urutan",
-      className: "w-[80px] text-center",
-      render: (row) => <span className="font-mono font-medium">{row.urutan}</span>,
-    },
-    {
       header: "Label Predikat",
       render: (row) => (
         <div className="flex items-center gap-2">
@@ -132,11 +127,11 @@ export default function PredikatYudisiumClient({ initialData }: Props) {
       className: "text-center w-[100px]",
       render: (row) => (
         <div className="flex items-center justify-center gap-1">
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(row)}>
-            <Pencil className="h-3.5 w-3.5" />
+          <Button size="icon" variant="ghost" className="h-8 w-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50" onClick={() => openEdit(row)}>
+            <Pencil className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => openDelete(row)}>
-            <Trash2 className="h-3.5 w-3.5" />
+          <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => openDelete(row)}>
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),

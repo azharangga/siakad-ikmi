@@ -1,12 +1,13 @@
 'use server'
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { StudentMBKM, StudentMBKMFormValues } from "@/lib/types";
 
+const supabase = createAdminClient();
+
 // 1. Get All MBKM Students
 export async function getMbkmStudents() {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from('student_mbkm')
     .select(`
@@ -29,7 +30,6 @@ export async function getMbkmStudents() {
 }
 
 export async function getMbkmByStudentId(studentId: string) {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from('student_mbkm')
     .select(`
@@ -54,7 +54,6 @@ export async function getMbkmByStudentId(studentId: string) {
 
 // 2. Create
 export async function createMbkmStudent(values: StudentMBKMFormValues) {
-  const supabase = await createClient();
   // Cek duplikasi
   const { data: existing } = await supabase
     .from('student_mbkm')
@@ -81,7 +80,6 @@ export async function createMbkmStudent(values: StudentMBKMFormValues) {
 
 // 3. Update
 export async function updateMbkmStudent(id: string, values: StudentMBKMFormValues) {
-  const supabase = await createClient();
   const { error } = await supabase
     .from('student_mbkm')
     .update({
@@ -100,7 +98,6 @@ export async function updateMbkmStudent(id: string, values: StudentMBKMFormValue
 
 // 4. Delete
 export async function deleteMbkmStudent(id: string) {
-  const supabase = await createClient();
   const { error } = await supabase.from('student_mbkm').delete().eq('id', id);
   if (error) throw new Error("Gagal menghapus data MBKM.");
   revalidatePath('/mbkm');

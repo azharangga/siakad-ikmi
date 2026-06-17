@@ -1,12 +1,12 @@
 'use server';
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { calculateStudentSemester } from "@/lib/academic-utils";
 
-export async function getStudentsWithoutKRS(academicYearId: string) {
-  const supabase = await createClient();
+const supabase = createAdminClient();
 
+export async function getStudentsWithoutKRS(academicYearId: string) {
   try {
     const { data: academicYear } = await supabase
       .from("academic_years")
@@ -69,7 +69,6 @@ interface BulkKRSPayload {
 }
 
 export async function createBulkKRS(payload: BulkKRSPayload) {
-  const supabase = await createClient();
   const { studentIds, courseIds, academicYearId } = payload;
 
   if (studentIds.length === 0 || courseIds.length === 0) {
@@ -107,8 +106,6 @@ export async function createBulkKRS(payload: BulkKRSPayload) {
 }
 
 export async function getCoursesForAcademicYear(academicYearId: string) {
-  const supabase = await createClient();
-
   try {
     // 1. Cek Semester Ganjil/Genap
     const { data: ay } = await supabase

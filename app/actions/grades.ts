@@ -1,13 +1,14 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { GradeData, GradeFormValues } from "@/lib/types";
 import { revalidatePath } from "next/cache";
+
+const supabase = createAdminClient();
 
 // --- FETCH DATA ---
 
 export async function getGrades(): Promise<GradeData[]> {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("grades")
     .select(`
@@ -30,7 +31,6 @@ export async function getGrades(): Promise<GradeData[]> {
 }
 
 export async function getStudentCoursesForGrading(studentId: string) {
-  const supabase = await createClient();
   try {
     const { data: krsList, error: krsError } = await supabase
       .from("krs")
@@ -59,7 +59,6 @@ export async function getStudentCoursesForGrading(studentId: string) {
 }
 
 export async function getStudentsForSelect() {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("students")
     .select("id, nim, nama")
@@ -69,7 +68,6 @@ export async function getStudentsForSelect() {
 }
 
 export async function getCoursesForSelect() {
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("courses")
     .select("id, kode, matkul, sks, smt_default")
@@ -80,7 +78,6 @@ export async function getCoursesForSelect() {
 
 // --- Fetch Grade Summary (Dashboard) ---
 export async function getStudentGradeSummary(studentId: string) {
-  const supabase = await createClient();
   try {
     const { data: grades, error } = await supabase
       .from("grades")
@@ -149,7 +146,6 @@ export async function saveStudentGrades(
   studentId: string,
   grades: { course_id: string, hm: string }[]
 ) {
-  const supabase = await createClient();
   for (const item of grades) {
     const { data: existing } = await supabase
       .from("grades")
@@ -175,7 +171,6 @@ export async function saveStudentGrades(
 
 /* NEW: BULK IMPORT FOR EXCEL */
 export async function createBulkGrades(data: { nim: string, kode: string, hm: string }[]) {
-  const supabase = await createClient();
   try {
     const uniqueNims = Array.from(new Set(data.map(d => d.nim)));
     const uniqueKodes = Array.from(new Set(data.map(d => d.kode)));
@@ -291,7 +286,6 @@ export async function createBulkGrades(data: { nim: string, kode: string, hm: st
 
 // --- CRUD SINGLE ---
 export async function createGrade(formData: GradeFormValues) {
-  const supabase = await createClient();
   const { error } = await supabase.from("grades").insert({
     student_id: formData.student_id,
     course_id: formData.course_id,
@@ -302,7 +296,6 @@ export async function createGrade(formData: GradeFormValues) {
 }
 
 export async function updateGrade(id: string, formData: GradeFormValues) {
-  const supabase = await createClient();
   const { error } = await supabase
     .from("grades")
     .update({
@@ -316,7 +309,6 @@ export async function updateGrade(id: string, formData: GradeFormValues) {
 }
 
 export async function deleteGrade(id: string) {
-  const supabase = await createClient();
   const { error } = await supabase.from("grades").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/nilai");
