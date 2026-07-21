@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,28 +12,41 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Printer, Loader2, GraduationCap, Users, Download } from "lucide-react";
+import { Printer, Loader2, GraduationCap, Users, Lock, FileText, CheckCircle2, Download, AlertTriangle } from "lucide-react";
 
 import { getOfficialForDocument } from "@/app/actions/students";
-import { StudentData, StudyProgram, Official, TranscriptItem, SidangSkripsi, PredikatYudisium } from "@/lib/types";
+import { StudentData, StudyProgram, Official, SidangSkripsi, PredikatYudisium } from "@/lib/types";
 import { StudentTable } from "@/components/features/nilai/StudentTable";
 import { useLayout } from "@/app/context/LayoutContext";
 import { usePdfPrint } from "@/hooks/use-pdf-print";
-import { calculateIPK } from "@/lib/grade-calculations";
+import { calculateIPK, calculateTotalSKSLulus } from "@/lib/grade-calculations";
 import PrintableSKL from "@/components/features/surat-keterangan-lulus/PrintableSKL";
 
 interface AdminSKLViewProps {
-  initialStudents: StudentData[];          // sudah difilter: hanya yg ada nilai smt 8
+  initialStudents: StudentData[];
   initialStudyPrograms: StudyProgram[];
   officialKetua: Official | null;
-  sidangMap: Record<string, SidangSkripsi>; // student_id -> sidang
+  sidangMap: Record<string, SidangSkripsi>;
   predikatList: PredikatYudisium[];
 }
 
-// Ambil nilai huruf mata kuliah skripsi di semester 8
+function getRomanMonth(monthIndex: number): string {
+  const map = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+  return map[monthIndex] || "I";
+}
+
+export function generateNomorSuratSKL(student: StudentData, index: number): string {
+  const seq = String(index + 1).padStart(3, "0");
+  const prodiKode = (student.profile?.study_program?.kode || "TI").toUpperCase().trim();
+  const date = new Date();
+  const romanMonth = getRomanMonth(date.getMonth());
+  const year = date.getFullYear();
+
+  return `${seq}/SKL/PRODI-${prodiKode}/STMIK-IKMI/${romanMonth}/${year}`;
+}
+
 function getNilaiSkripsi(student: StudentData): string {
   const smt8 = student.transcript.filter((t) => Number(t.smt) === 8 && t.hm !== "-");
-  // Cari matkul yang namanya mengandung "skripsi" atau "tugas akhir"
   const skripsi = smt8.find(
     (t) =>
       t.matkul.toLowerCase().includes("skripsi") ||
@@ -61,7 +74,11 @@ export default function AdminSKLView({
   predikatList,
 }: AdminSKLViewProps) {
   const { isCollapsed } = useLayout();
-  const [studentList] = useState<StudentData[]>(initialStudents);
+
+  const studentList = useMemo(() => {
+    return initialStudents;
+  }, [initialStudents]);
+
   const [studyPrograms] = useState<StudyProgram[]>(initialStudyPrograms);
   const [officialKaprodi, setOfficialKaprodi] = useState<Official | null>(null);
 
@@ -86,6 +103,10 @@ export default function AdminSKLView({
 
   const handleOpenPrintModal = async (student: StudentData) => {
     setSelectedStudent(student);
+    const index = studentList.findIndex((s) => s.id === student.id);
+    const autoNomor = generateNomorSuratSKL(student, index >= 0 ? index : 0);
+    setNomorSurat(autoNomor);
+
     setIsPrintModalOpen(true);
     if (student.profile.study_program_id) {
       const off = await getOfficialForDocument(student.profile.study_program_id);
@@ -116,7 +137,6 @@ export default function AdminSKLView({
       const student = studentList[i];
       setDownloadProgress(Math.round(((i + 1) / studentList.length) * 100));
 
-      // Fetch kaprodi for this student
       let kaprodi: Official | null = null;
       if (student.profile.study_program_id) {
         kaprodi = await getOfficialForDocument(student.profile.study_program_id);
@@ -126,8 +146,8 @@ export default function AdminSKLView({
       const ipk = getIPKYudisium(student);
       const pred = getPredikat(parseFloat(ipk), predikatList);
       const nilai = getNilaiSkripsi(student);
+      const autoNomor = generateNomorSuratSKL(student, i);
 
-      // Render hidden element
       const container = document.createElement("div");
       container.style.position = "absolute";
       container.style.top = "0";
@@ -145,35 +165,32 @@ export default function AdminSKLView({
             currentStudent: student,
             officialKaprodi: kaprodi,
             officialKetua: officialKetua,
-            nomorSurat: String(i + 1).padStart(3, "0"),
+            nomorSurat: autoNomor,
             hariSidang: sidang?.hari_sidang || "",
             tanggalSidang: sidang
-              ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(sidang.tanggal_sidang))
+              ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(
+                  new Date(sidang.tanggal_sidang)
+                )
               : "",
             nilaiSidang: nilai,
             ipkYudisium: ipk,
             predikat: pred,
-            signatureType: signatureType,
+            signatureType: "none",
             isCollapsed: true,
           })
         );
-        setTimeout(resolve, 600);
+        setTimeout(resolve, 300);
       });
 
-      const el = container.querySelector("[data-skl-paper]") as HTMLElement || container.firstElementChild as HTMLElement;
+      const blob = await generatePdfBlob({
+        elementRef: { current: container as HTMLDivElement },
+        fileName: `SKL_${student.profile.nim}.pdf`,
+        pdfFormat: "a4",
+        pdfOrientation: "portrait",
+      });
 
-      try {
-        const blob = await generatePdfBlob({
-          elementRef: { current: el },
-          fileName: `SKL_${student.profile.nim}.pdf`,
-          pdfFormat: "a4",
-          pdfOrientation: "portrait",
-        });
-        if (blob) {
-          zip.file(`SKL_${student.profile.nim}_${student.profile.nama}.pdf`, blob);
-        }
-      } catch (e) {
-        console.error("Error generating PDF for", student.profile.nim, e);
+      if (blob) {
+        zip.file(`SKL_${student.profile.nim}_${student.profile.nama.replace(/\s+/g, "_")}.pdf`, blob);
       }
 
       root.unmount();
@@ -184,7 +201,7 @@ export default function AdminSKLView({
     const url = URL.createObjectURL(zipBlob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `SKL_Semua_${new Date().toISOString().slice(0, 10)}.zip`;
+    link.download = `SKL_Mahasiswa_Lulus_${new Date().toISOString().slice(0, 10)}.zip`;
     link.click();
     URL.revokeObjectURL(url);
 
@@ -234,7 +251,7 @@ export default function AdminSKLView({
               <GraduationCap className="h-8 w-8" />
             </div>
             <div>
-              <p className="text-emerald-100 text-sm">Mahasiswa Lulus Semester 8</p>
+              <p className="text-emerald-100 text-sm font-medium">Mahasiswa Lulus (Siap Cetak SKL)</p>
               <p className="text-3xl font-extrabold">{studentList.length}</p>
             </div>
           </CardContent>
@@ -245,7 +262,7 @@ export default function AdminSKLView({
               <Users className="h-8 w-8" />
             </div>
             <div>
-              <p className="text-blue-100 text-sm">Sudah Ada Jadwal Sidang</p>
+              <p className="text-blue-100 text-sm font-medium">Sudah Mengikuti Sidang</p>
               <p className="text-3xl font-extrabold">
                 {studentList.filter((s) => !!sidangMap[s.id]).length}
               </p>
@@ -263,23 +280,23 @@ export default function AdminSKLView({
             isLoading={false}
             onEdit={handleOpenPrintModal}
             actionLabel="Cetak SKL"
-            actionIcon={<Printer className="w-3.5 h-3.5 mr-2" />}
+            actionIcon={<Printer className="w-3.5 h-3.5" />}
             customActions={
               <Button
                 variant="outline"
                 size="sm"
+                className="gap-2 border-border text-foreground font-medium rounded-lg hover:bg-muted/80 bg-background shadow-2xs h-9 px-3.5"
                 onClick={handleDownloadAll}
                 disabled={isDownloadingAll || studentList.length === 0}
-                className="h-9 gap-2"
               >
                 {isDownloadingAll ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {downloadProgress}%
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    Memproses ({downloadProgress}%)
                   </>
                 ) : (
                   <>
-                    <Download className="h-4 w-4" />
+                    <Download className="w-4 h-4 text-foreground" />
                     Unduh Semua
                   </>
                 )}
@@ -289,43 +306,68 @@ export default function AdminSKLView({
         </CardContent>
       </Card>
 
-      {/* MODAL CETAK */}
+      {/* MODAL CETAK SKL */}
       <Dialog open={isPrintModalOpen} onOpenChange={setIsPrintModalOpen}>
-        <DialogContent className="sm:max-w-[440px]">
-          <DialogHeader>
-            <DialogTitle>Cetak Surat Keterangan Lulus</DialogTitle>
+        <DialogContent className="sm:max-w-lg border border-border shadow-xl">
+          <DialogHeader className="border-b pb-3">
+            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+              <FileText className="w-5 h-5 text-primary" />
+              Cetak Surat Keterangan Lulus (SKL)
+            </DialogTitle>
           </DialogHeader>
 
           {selectedStudent && (
-            <div className="py-2 space-y-4">
-              {/* Info Mahasiswa */}
-              <div className="rounded-lg bg-muted/40 p-3 space-y-1 text-sm">
-                <p className="font-semibold">{selectedStudent.profile.nama}</p>
-                <p className="text-muted-foreground font-mono">{selectedStudent.profile.nim}</p>
-                <p className="text-muted-foreground">{selectedStudent.profile.study_program?.nama}</p>
-              </div>
+            <div className="space-y-4 py-2 text-sm">
+              {/* Card Ringkasan Mahasiswa */}
+              {(() => {
+                const totalSks = selectedStudent ? calculateTotalSKSLulus(selectedStudent.transcript) : 0;
+                const jenjang = selectedStudent?.profile?.study_program?.jenjang || "S1";
+                const targetSks = jenjang.includes("D3") ? 108 : 144;
+                const hasEnough = totalSks >= targetSks;
 
-              {/* Info Otomatis */}
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="rounded-lg border p-2 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Nilai Skripsi</p>
-                  <p className="font-bold text-lg">{selectedNilaiSkripsi}</p>
+                return (
+                  <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-base text-foreground">{selectedStudent.profile.nama}</p>
+                      {hasEnough ? (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> SKS Terpenuhi ({totalSks}/{targetSks})
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> Belum Cukup SKS ({totalSks}/{targetSks})
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground font-mono">NIM: {selectedStudent.profile.nim}</p>
+                    <p className="text-xs font-medium text-primary">
+                      {selectedStudent.profile.study_program?.nama || "-"} ({jenjang})
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Rincian Nilai */}
+              <div className="grid grid-cols-3 gap-2.5 text-center">
+                <div className="rounded-lg border bg-background p-2.5">
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">Nilai Skripsi</p>
+                  <p className="font-bold text-sm text-foreground mt-0.5">{selectedNilaiSkripsi}</p>
                 </div>
-                <div className="rounded-lg border p-2 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">IPK Yudisium</p>
-                  <p className="font-bold text-lg">{parseFloat(selectedIPK).toFixed(2)}</p>
+                <div className="rounded-lg border bg-background p-2.5">
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">IPK Yudisium</p>
+                  <p className="font-bold text-sm text-primary mt-0.5">{selectedIPK}</p>
                 </div>
-                <div className="rounded-lg border p-2 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Predikat</p>
-                  <p className="font-bold text-xs leading-tight">{selectedPredikat}</p>
+                <div className="rounded-lg border bg-background p-2.5">
+                  <p className="text-[10px] uppercase font-semibold text-muted-foreground">Predikat</p>
+                  <p className="font-bold text-xs text-foreground mt-0.5 truncate">{selectedPredikat}</p>
                 </div>
               </div>
 
               {/* Info Sidang */}
               {selectedSidang ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm space-y-1">
-                  <p className="font-medium text-emerald-800">Jadwal Sidang Tersedia</p>
-                  <p className="text-emerald-700">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs space-y-0.5 text-emerald-700 dark:text-emerald-300">
+                  <p className="font-semibold">Tanggal Sidang Skripsi</p>
+                  <p>
                     {selectedSidang.hari_sidang},{" "}
                     {new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(
                       new Date(selectedSidang.tanggal_sidang)
@@ -333,28 +375,35 @@ export default function AdminSKLView({
                   </p>
                 </div>
               ) : (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-                  <p className="text-amber-700">Jadwal sidang belum diisi. Tanggal sidang akan kosong di SKL.</p>
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+                  <p>Jadwal sidang skripsi belum diisi. Tanggal sidang akan kosong pada dokumen SKL.</p>
                 </div>
               )}
 
-              {/* Nomor Surat */}
+              {/* Nomor Surat (READONLY & DINAMIS OTOMATIS PER MAHASISWA) */}
               <div className="space-y-1.5">
-                <Label className="text-sm">Nomor Surat</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-primary" /> Nomor Surat (Otomatis & Unik)
+                  </Label>
+                  <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-md border border-primary/20">
+                    Format Resmi BAAK
+                  </span>
+                </div>
                 <Input
                   value={nomorSurat}
-                  onChange={(e) => setNomorSurat(e.target.value)}
-                  placeholder="Contoh: 001"
-                  className="h-9"
+                  readOnly
+                  disabled
+                  className="h-10 font-mono text-xs font-bold bg-muted/60 border-primary/30 text-foreground cursor-not-allowed select-all"
                 />
               </div>
 
               {/* Tanda Tangan */}
               {hasAnySignature && (
                 <div className="space-y-1.5">
-                  <Label className="text-sm">Tanda Tangan</Label>
+                  <Label className="text-xs font-semibold text-muted-foreground">Opsi Tanda Tangan Dokumen</Label>
                   <Select value={signatureType} onValueChange={(v) => setSignatureType(v as "basah" | "digital" | "none")}>
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-9 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -363,7 +412,7 @@ export default function AdminSKLView({
                         <SelectItem value="basah">Tanda tangan basah</SelectItem>
                       )}
                       {(officialKaprodi?.ttd_digital_url || officialKetua?.ttd_digital_url) && (
-                        <SelectItem value="digital">Tanda tangan digital (QR)</SelectItem>
+                        <SelectItem value="digital">Tanda tangan digital (QR Verification)</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -372,13 +421,15 @@ export default function AdminSKLView({
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setIsPrintModalOpen(false)} disabled={isPrinting}>Batal</Button>
-            <Button onClick={handlePrintProcess} disabled={isPrinting}>
+          <div className="flex justify-end gap-2.5 pt-2 border-t mt-2">
+            <Button variant="outline" size="sm" onClick={() => setIsPrintModalOpen(false)} disabled={isPrinting}>
+              Batal
+            </Button>
+            <Button size="sm" onClick={handlePrintProcess} disabled={isPrinting} className="gap-1.5">
               {isPrinting ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memproses...</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>
               ) : (
-                <><Printer className="w-4 h-4 mr-2" /> Cetak PDF</>
+                <><Printer className="w-4 h-4" /> Cetak PDF</>
               )}
             </Button>
           </div>

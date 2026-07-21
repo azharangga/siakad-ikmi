@@ -20,11 +20,11 @@ async function getKetuaSTMIK(): Promise<Official | null> {
   return (data as unknown as Official) || null;
 }
 
-// Filter mahasiswa yang sudah ada nilai semester 8
+// Filter mahasiswa untuk Admin: Patokannya adalah mahasiswa yang SUDAH DIINPUT NILAI SEMESTER 8-nya
 function filterStudentsWithSmt8(students: StudentData[]): StudentData[] {
-  return students.filter((s) =>
-    s.transcript.some((t) => Number(t.smt) === 8 && t.hm !== "-")
-  );
+  return students.filter((s) => {
+    return s.transcript.some((t) => Number(t.smt) === 8 && t.hm && t.hm !== "-");
+  });
 }
 
 export default async function SKLPage() {
@@ -59,7 +59,7 @@ export default async function SKLPage() {
       getSidangSkripsi(),
     ]);
 
-    // Hanya mahasiswa dengan nilai semester 8
+    // Ambil hanya mahasiswa yang sudah diinput nilai semester 8-nya untuk Admin
     allStudents = filterStudentsWithSmt8(allS);
     studyPrograms = progs;
 
