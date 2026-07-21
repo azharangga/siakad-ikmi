@@ -5,7 +5,6 @@ import { DashboardHeader } from "@/components/features/dashboard/DashboardHeader
 import { StatCard } from "@/components/features/dashboard/StatCard";
 import { SemesterLineChart } from "@/components/features/dashboard/SemesterLineChart";
 import { GradeDonutChart } from "@/components/features/dashboard/GradeDonutChart";
-import { Skeleton } from "@/components/ui/skeleton";
 import { 
   UsersIcon, 
   LibraryIcon, 
@@ -28,9 +27,22 @@ interface DashboardClientProps {
   gradeDistData: { counts: any; totalGrades: number; totalAM: number };
   role: string;
   studentId?: string;
+  prodiStats?: { prodi: string; count: number }[];
+  prodiName?: string;
+  currentSmt?: number;
 }
 
-export default function DashboardClient({ stats, trendData, gradeDistData, role, userName, studentId }: DashboardClientProps & { userName: string }) {
+export default function DashboardClient({
+  stats,
+  trendData,
+  gradeDistData,
+  role,
+  userName,
+  studentId,
+  prodiStats = [],
+  prodiName = "Teknik Informatika",
+  currentSmt = 1,
+}: DashboardClientProps & { userName: string }) {
   
   const getIcon = (type: string) => {
     switch (type) {
@@ -62,14 +74,20 @@ export default function DashboardClient({ stats, trendData, gradeDistData, role,
       </div>
 
       <div className="grid gap-6 lg:grid-cols-7">
-         <SemesterLineChart 
-            data={trendData} 
-            title={role === "mahasiswa" ? "Tren IPS Setiap Semester" : "Tren Rata-rata IPS Mahasiswa"} 
-          />
-          <GradeDonutChart
-            counts={gradeDistData.counts}
-            total={gradeDistData.totalGrades}
-          />
+        <SemesterLineChart 
+          data={trendData} 
+          title={role === "mahasiswa" ? "Tren IPS Setiap Semester" : "Tren Rata-rata IPS Mahasiswa"} 
+        />
+        <GradeDonutChart
+          counts={gradeDistData.counts}
+          total={gradeDistData.totalGrades}
+          role={role}
+          myIPK={stats[0]?.value || "0.00"}
+          totalSKS={parseInt(stats[1]?.value || "0") || 0}
+          prodiStats={prodiStats}
+          prodiName={prodiName}
+          currentSmt={currentSmt}
+        />
       </div>
     </div>
   );

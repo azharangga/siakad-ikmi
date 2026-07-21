@@ -33,7 +33,7 @@ export function calculateStudentIPS(transcript: TranscriptItem[], semester: numb
 }
 
 export function calculateSemesterTrend(allStudents: StudentData[]) {
-  let maxSmt = 0;
+  let maxSmt = 8;
   allStudents.forEach(s => {
     s.transcript?.forEach(t => {
       if (t.smt > maxSmt) maxSmt = t.smt;

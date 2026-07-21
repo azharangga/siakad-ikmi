@@ -21,45 +21,124 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const SUGGESTIONS = [
-  "Tampilkan biodata saya",
-  "Berapa IPK saya sekarang?",
-  "Lihat KHS semester ini",
-  "Apa saja mata kuliah KRS saya?",
+  "Tampilkan biodata & profil saya",
+  "Berapa IPK kumulatif saya sekarang?",
+  "Lihat KHS semester 1",
+  "Apa saja mata kuliah KRS semester aktif?",
+  "Berapa total SKS yang sudah lulus?",
+  "Predikat kelulusan & syarat yudisium",
+  "Cari mata kuliah Algoritma",
+  "Informasi statistik kampus STMIK IKMI",
 ];
 
 const ADMIN_SUGGESTIONS = [
-  "Tampilkan statistik SIAKAD",
-  "Cari mahasiswa dengan IPK tertinggi",
+  "Tampilkan statistik umum SIAKAD IKMI",
+  "Cari 5 mahasiswa dengan IPK tertinggi",
   "Berapa jumlah mahasiswa per prodi?",
-  "Cari mata kuliah Algoritma",
+  "Daftar program studi & jenjangnya",
+  "Cari mahasiswa berdasarkan NIM",
+  "Cari dosen berdasarkan NIDN",
+  "Informasi tahun akademik & semester",
+  "Cari mata kuliah di database",
 ];
 
 const DOSEN_SUGGESTIONS = [
-  "Tampilkan statistik mahasiswa",
+  "Tampilkan profil & NIDN saya",
+  "Tampilkan statistik umum SIAKAD",
+  "Berapa jumlah mahasiswa per prodi?",
   "Cari mahasiswa bernama Ahmad",
-  "Berapa total dosen aktif?",
-  "Daftar mahasiswa Sistem Informasi",
+  "Siapa mahasiswa dengan IPK tertinggi?",
+  "Daftar seluruh program studi IKMI",
+  "Cari mata kuliah Sistem Informasi",
+  "Informasi tahun akademik aktif",
 ];
+
+function TypewriterMarkdown({ text, isLatest }: { text: string; isLatest: boolean }) {
+  const [displayedText, setDisplayedText] = useState(() => (isLatest ? "" : text));
+  const indexRef = useRef(isLatest ? 0 : text.length);
+
+  useEffect(() => {
+    if (!isLatest) {
+      setDisplayedText(text);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      if (indexRef.current < text.length) {
+        indexRef.current = Math.min(indexRef.current + 3, text.length);
+        setDisplayedText(text.slice(0, indexRef.current));
+      } else {
+        clearInterval(timer);
+      }
+    }, 12);
+
+    return () => clearInterval(timer);
+  }, [text, isLatest]);
+
+  return (
+    <div className="chatbot-markdown max-w-full break-words">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          table: ({ ...props }) => (
+            <div className="my-2 overflow-x-auto rounded-lg border border-border bg-background shadow-xs">
+              <table className="w-full text-left text-[12px] border-collapse" {...props} />
+            </div>
+          ),
+          thead: ({ ...props }) => (
+            <thead className="bg-muted/80 font-semibold text-foreground border-b border-border" {...props} />
+          ),
+          th: ({ ...props }) => (
+            <th className="px-3 py-1.5 font-semibold text-foreground border-r border-border last:border-r-0 whitespace-nowrap" {...props} />
+          ),
+          td: ({ ...props }) => (
+            <td className="px-3 py-1.5 border-t border-r border-border last:border-r-0 whitespace-nowrap" {...props} />
+          ),
+          tr: ({ ...props }) => (
+            <tr className="even:bg-muted/30 hover:bg-muted/50 transition-colors" {...props} />
+          ),
+          p: ({ ...props }) => (
+            <p className="mb-2 last:mb-0 leading-relaxed" {...props} />
+          ),
+          ul: ({ ...props }) => (
+            <ul className="my-1.5 ml-4 list-disc space-y-1 text-xs" {...props} />
+          ),
+          ol: ({ ...props }) => (
+            <ol className="my-1.5 ml-4 list-decimal space-y-1 text-xs" {...props} />
+          ),
+          li: ({ ...props }) => (
+            <li className="leading-normal" {...props} />
+          ),
+          code: ({ ...props }) => (
+            <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono text-primary border border-border/50" {...props} />
+          ),
+          h3: ({ ...props }) => (
+            <h3 className="font-semibold text-sm text-foreground mt-3 mb-1.5 flex items-center gap-1.5" {...props} />
+          ),
+        }}
+      >
+        {displayedText}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "online" | "offline">("connecting");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [showQuickActions, setShowQuickActions] = useState(false);
   
-  const { messages, sendMessage, status, setMessages } = useChat({
-    onError: () => setConnectionStatus("offline"),
-  });
+  const { messages, sendMessage, status, setMessages } = useChat({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pathname = usePathname();
 
   const isLoading = status !== "ready" && status !== "error";
 
-  // Fetch user role untuk suggestions
+  // Fetch user role untuk saran chat
   useEffect(() => {
     const fetchRole = async () => {
       try {
@@ -80,20 +159,6 @@ export function Chatbot() {
     ? DOSEN_SUGGESTIONS 
     : SUGGESTIONS;
 
-  // Jika chat error (kuota habis, server down), set status offline
-  useEffect(() => {
-    if (status === "error") {
-      setConnectionStatus("offline");
-      // Jika pesan terakhir dari user dan belum ada balasan, tambahkan pesan error
-      if (messages.length > 0 && messages[messages.length - 1].role === "user") {
-        setMessages((prev) => [
-          ...prev,
-          { id: `err-${Date.now()}`, role: "assistant" as const, parts: [{ type: "text" as const, text: "Mohon maaf, saat ini terjadi **gangguan layanan** atau **masalah koneksi internet**. Silakan periksa koneksi Anda dan coba beberapa saat lagi." }] },
-        ]);
-      }
-    }
-  }, [status]);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
@@ -105,56 +170,18 @@ export function Chatbot() {
     }
   }, [inputValue]);
 
-  // Cek koneksi ke AI saat chatbot dibuka
+  // Focus pada input saat chatbot dibuka
   useEffect(() => {
     if (!isOpen) return;
-    setConnectionStatus("connecting");
     setTimeout(() => textareaRef.current?.focus(), 250);
-
-    const checkConnection = async () => {
-      try {
-        if (!navigator.onLine) {
-          setConnectionStatus("offline");
-          return;
-        }
-        const res = await fetch("/api/chat", {
-          method: "GET",
-          signal: AbortSignal.timeout(6000),
-        });
-        const data = await res.json();
-        setConnectionStatus(data.status === "ok" ? "online" : "offline");
-      } catch {
-        setConnectionStatus("offline");
-      }
-    };
-
-    checkConnection();
-
-    const handleOnline = () => checkConnection();
-    const handleOffline = () => setConnectionStatus("offline");
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
   }, [isOpen]);
 
   const handleSend = useCallback((text: string) => {
     if (!text.trim() || isLoading) return;
     setInputValue("");
 
-    if (connectionStatus === "offline") {
-      setMessages((prev) => [
-        ...prev,
-        { id: `user-${Date.now()}`, role: "user" as const, parts: [{ type: "text" as const, text }] },
-        { id: `err-${Date.now()}`, role: "assistant" as const, parts: [{ type: "text" as const, text: "Mohon maaf, saat ini terjadi **gangguan layanan** atau **masalah koneksi internet**. Silakan periksa koneksi Anda dan coba beberapa saat lagi." }] },
-      ]);
-      return;
-    }
-
     sendMessage({ text });
-  }, [isLoading, sendMessage, connectionStatus, setMessages]);
+  }, [isLoading, sendMessage]);
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -179,7 +206,7 @@ export function Chatbot() {
   const exportChat = () => {
     const chatText = messages
       .map((m) => {
-        const text = getMessageText(m.parts);
+        const text = getMessageText(m);
         const role = m.role === 'user' ? 'Anda' : 'Bot';
         return `${role}: ${text}`;
       })
@@ -194,9 +221,13 @@ export function Chatbot() {
     URL.revokeObjectURL(url);
   };
 
-  const getMessageText = (parts: any[]) => {
-    if (!parts) return "";
-    return parts.filter((p: any) => p.type === "text").map((p: any) => p.text).join("");
+  const getMessageText = (m: any) => {
+    if (!m) return "";
+    if (typeof m.content === "string" && m.content.trim()) return m.content;
+    if (m.parts && Array.isArray(m.parts)) {
+      return m.parts.filter((p: any) => p.type === "text").map((p: any) => p.text).join("");
+    }
+    return "";
   };
 
   const formatTime = (date: Date) =>
@@ -218,8 +249,8 @@ export function Chatbot() {
   }
 
   const size = isExpanded
-    ? "w-[90vw] sm:w-[520px] h-[80vh] sm:h-[650px]"
-    : "w-[340px] sm:w-[380px] h-[500px]";
+    ? "w-[90vw] sm:w-[560px] h-[80vh] sm:h-[680px]"
+    : "w-[340px] sm:w-[420px] h-[520px]";
 
   return (
     <div className={`chatbot-container fixed bottom-6 right-6 ${size} bg-background border rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden transition-all duration-300`}>
@@ -232,22 +263,9 @@ export function Chatbot() {
           </div>
           <div className="leading-tight">
             <h3 className="font-semibold text-[13px]">SIAKAD Bot</h3>
-            <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium ${
-              isLoading ? "bg-blue-400/15 text-blue-300" :
-              connectionStatus === "online" ? "bg-emerald-400/15 text-emerald-300" :
-              connectionStatus === "offline" ? "bg-red-400/15 text-red-300" :
-              "bg-yellow-400/15 text-yellow-300"
-            }`}>
-              <span className={`w-1 h-1 rounded-full ${
-                isLoading ? "bg-blue-400 animate-pulse" :
-                connectionStatus === "online" ? "bg-emerald-400" :
-                connectionStatus === "offline" ? "bg-red-400" :
-                "bg-yellow-400 animate-pulse"
-              }`} />
-              {isLoading ? "Mengetik..." :
-               connectionStatus === "online" ? "Online" :
-               connectionStatus === "offline" ? "Offline" :
-               "Menghubungkan..."}
+            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-emerald-400/15 text-emerald-300">
+              <span className={`w-1 h-1 rounded-full ${isLoading ? "bg-blue-400 animate-pulse" : "bg-emerald-400"}`} />
+              {isLoading ? "Mengetik..." : "Online"}
             </div>
           </div>
         </div>
@@ -289,7 +307,7 @@ export function Chatbot() {
               </p>
             </div>
             <div className="w-full flex flex-col gap-1.5">
-              {suggestions.map((s, i) => (
+              {suggestions.slice(0, 4).map((s, i) => (
                 <button
                   key={i}
                   onClick={() => handleSend(s)}
@@ -301,24 +319,23 @@ export function Chatbot() {
             </div>
           </div>
         ) : (
-          messages.map((m) => {
-            const text = getMessageText(m.parts);
+          messages.map((m, index) => {
+            const text = getMessageText(m);
             if (!text) return null;
             const isUser = m.role === "user";
+            const isLatestAssistant = !isUser && index === messages.length - 1;
 
             return (
-              <div key={m.id} className={`chatbot-message flex items-end gap-2 ${isUser ? "ml-auto flex-row-reverse" : "mr-auto"}`} style={{ maxWidth: "85%" }}>
+              <div key={m.id} className={`chatbot-message flex items-end gap-2 ${isUser ? "ml-auto flex-row-reverse" : "mr-auto"}`} style={{ maxWidth: isUser ? "85%" : "95%" }}>
                 <div className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center mb-5 ${isUser ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                   {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                 </div>
-                <div className="flex flex-col gap-0.5">
-                  <div className={`px-3 py-2 text-[13px] leading-relaxed ${isUser ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm" : "bg-muted/50 border rounded-2xl rounded-bl-sm"}`}>
+                <div className="flex flex-col gap-0.5 max-w-full">
+                  <div className={`px-3.5 py-2.5 text-[13px] leading-relaxed overflow-hidden ${isUser ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm" : "bg-muted/40 border rounded-2xl rounded-bl-sm"}`}>
                     {isUser ? (
                       <div className="break-words whitespace-pre-wrap">{text}</div>
                     ) : (
-                      <div className="chatbot-markdown max-w-none break-words">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-                      </div>
+                      <TypewriterMarkdown text={text} isLatest={isLatestAssistant} />
                     )}
                   </div>
                   <div className={`flex items-center gap-1.5 px-1 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -344,9 +361,9 @@ export function Chatbot() {
             </div>
             <div className="px-4 py-3 bg-muted/50 border rounded-2xl rounded-bl-sm">
               <div className="flex gap-1 items-center">
-                <span className="chatbot-dot w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-                <span className="chatbot-dot w-1.5 h-1.5 rounded-full bg-muted-foreground/40" style={{ animationDelay: "0.15s" }} />
-                <span className="chatbot-dot w-1.5 h-1.5 rounded-full bg-muted-foreground/40" style={{ animationDelay: "0.3s" }} />
+                <span className="chatbot-dot w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" />
+                <span className="chatbot-dot w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0.15s" }} />
+                <span className="chatbot-dot w-1.5 h-1.5 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0.3s" }} />
               </div>
             </div>
           </div>
@@ -357,33 +374,31 @@ export function Chatbot() {
 
       {/* Input */}
       <div className="px-3 py-2.5 border-t">
-        {/* Quick Actions */}
-        {messages.length > 0 && showQuickActions && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {suggestions.slice(0, 3).map((s, i) => (
+        {/* Quick Actions Popup */}
+        {showQuickActions && (
+          <div className="mb-2 flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 border rounded-lg bg-background/95 backdrop-blur-xs">
+            {suggestions.map((s, i) => (
               <button
                 key={i}
                 onClick={() => { handleSend(s); setShowQuickActions(false); }}
-                className="text-[10px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                className="text-[10px] px-2 py-1 rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 text-left"
               >
-                <Sparkles className="w-2.5 h-2.5" />
-                {s.length > 30 ? s.slice(0, 30) + '...' : s}
+                <Sparkles className="w-2.5 h-2.5 shrink-0 text-primary" />
+                {s}
               </button>
             ))}
           </div>
         )}
         
         <form onSubmit={handleFormSubmit} className="flex items-end bg-muted/40 rounded-xl border focus-within:border-primary/30 transition-colors">
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowQuickActions(!showQuickActions)}
-              className="p-2 m-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              title="Quick actions"
-            >
-              <Sparkles className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowQuickActions(!showQuickActions)}
+            className={`p-2 m-1 transition-colors shrink-0 ${showQuickActions ? "text-primary bg-primary/10 rounded-lg" : "text-muted-foreground hover:text-foreground"}`}
+            title="Saran pesan / Quick actions"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
           <textarea
             ref={textareaRef}
             className="flex-1 bg-transparent px-3 py-2 outline-none text-sm placeholder:text-muted-foreground/60 resize-none min-h-[36px] max-h-[96px] leading-snug"
