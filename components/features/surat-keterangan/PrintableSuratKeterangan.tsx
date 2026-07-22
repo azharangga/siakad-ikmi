@@ -144,7 +144,7 @@ export default function PrintableSuratKeterangan({
                         <td style={colonStyle}>:</td>
                         <td
                           style={valueStyle}
-                          className="font-bold break-words uppercase"
+                          className="font-bold break-words"
                         >
                           {official ? official.lecturer?.nama : "..."}
                         </td>

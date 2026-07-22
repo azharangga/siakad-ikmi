@@ -86,7 +86,7 @@ export default function DocumentFooter({
         </div>
 
         <div className="text-center z-20 mt-[-35px] relative">
-          <p className="font-bold underline text-[11px] leading-none uppercase">
+          <p className="font-bold underline text-[11px] leading-none">
             {namaPejabat}
           </p>
           <p className="font-bold text-[10px] leading-tight">

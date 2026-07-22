@@ -150,8 +150,9 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
 
               <p className="mb-5 text-justify leading-[1.7]">
                 &nbsp;&nbsp;&nbsp;&nbsp;Setelah yang bersangkutan mengikuti dan melaksanakan sebagaimana diatur dalam tata
-                laksana Ujian Sidang Skripsi di STMIK IKMI Cirebon, pada tanggal{" "}
-                <strong>{getEffectiveHariSidang()}, {getEffectiveTanggalSidang()}</strong>{" "}
+                laksana Ujian Sidang Skripsi di STMIK IKMI Cirebon, pada hari{" "}
+                <strong>{getEffectiveHariSidang()}</strong> tanggal{" "}
+                <strong>{getEffectiveTanggalSidang()}</strong>{" "}
                 dihadapan Penguji Sidang Skripsi, yang bersangkutan dinyatakan{" "}
                 <strong className="tracking-widest">L u l u s</strong> dengan nilai Sidang Skripsi{" "}
                 <strong>{nilaiSidang || "A"}</strong> dan{" "}
@@ -190,7 +191,7 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
                   )}
                 </div>
                 <div className="text-center z-20 mt-[-35px] relative">
-                  <p className="font-bold underline text-[12px] leading-none uppercase">
+                  <p className="font-bold underline text-[12px] leading-none">
                     {officialKaprodi?.lecturer?.nama || "..."}
                   </p>
                   <p className="font-bold text-[11px] leading-tight mt-1">
@@ -221,7 +222,7 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
                   )}
                 </div>
                 <div className="text-center z-20 mt-[-35px] relative">
-                  <p className="font-bold underline text-[12px] leading-none uppercase">
+                  <p className="font-bold underline text-[12px] leading-none">
                     {officialKetua?.lecturer?.nama || "..."}
                   </p>
                   <p className="font-bold text-[11px] leading-tight mt-1">

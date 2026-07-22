@@ -132,11 +132,12 @@ export async function getOfficialForDocument(studyProgramId?: string): Promise<O
     if (prodiOfficial) return prodiOfficial as unknown as Official;
   }
 
-  // 2. Jika tidak ada (atau prodi beda), cari Ketua STMIK (Global)
+  // 2. Jika tidak ada (atau prodi beda), cari Ketua STMIK (Global, bukan Wakil)
   const { data: ketua } = await supabaseAdmin
     .from('officials')
     .select('*, lecturer:lecturers(*), study_program:study_programs(*)')
     .ilike('jabatan', '%Ketua%') // Flexible match for Ketua STMIK / Ketua
+    .not('jabatan', 'ilike', '%Wakil%')
     .is('study_program_id', null) // Ensure general official (not bound to specific prodi)
     .eq('is_active', true)
     .limit(1)

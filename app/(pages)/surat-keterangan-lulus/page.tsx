@@ -13,11 +13,24 @@ async function getKetuaSTMIK(): Promise<Official | null> {
     .from("officials")
     .select("*, lecturer:lecturers(*), study_program:study_programs(*)")
     .ilike("jabatan", "%Ketua%")
+    .not("jabatan", "ilike", "%Wakil%")
     .is("study_program_id", null)
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
-  return (data as unknown as Official) || null;
+
+  if (data) return data as unknown as Official;
+
+  const { data: fallback } = await supabase
+    .from("officials")
+    .select("*, lecturer:lecturers(*), study_program:study_programs(*)")
+    .is("study_program_id", null)
+    .not("jabatan", "ilike", "%Wakil%")
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  return (fallback as unknown as Official) || null;
 }
 
 // Filter mahasiswa untuk Admin: Patokannya adalah mahasiswa yang SUDAH DIINPUT NILAI SEMESTER 8-nya
