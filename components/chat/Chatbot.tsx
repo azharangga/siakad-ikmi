@@ -233,7 +233,7 @@ export function Chatbot() {
   const formatTime = (date: Date) =>
     new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(date);
 
-  if (pathname === "/login" || pathname?.startsWith("/login/")) return null;
+  if (pathname === "/login" || pathname?.startsWith("/login/") || pathname?.startsWith("/verify/")) return null;
 
   // Floating button
   if (!isOpen) {

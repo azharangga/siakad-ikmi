@@ -4,7 +4,7 @@ import React, { useRef, useState, useMemo } from "react";
 import PageHeader from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Printer, User, Eye, ShieldCheck } from "lucide-react";
+import { Printer, User, Eye, ShieldCheck, GraduationCap } from "lucide-react";
 import { StudentData } from "@/lib/types";
 import { KtmCard } from "@/components/features/mahasiswa/KtmCard";
 import Image from "next/image";
@@ -238,10 +238,17 @@ export default function KtmClient({ student, students }: KtmClientProps) {
                     <div className="w-full space-y-2">
                         <div className="flex justify-between text-xs">
                              <span className="text-slate-500">Status</span>
-                             <span className="font-medium text-emerald-600 flex items-center gap-1">
-                                <ShieldCheck className="w-3 h-3" />
-                                Aktif
-                             </span>
+                             {student.profile.status_mahasiswa?.toUpperCase() === "LULUS" ? (
+                               <span className="font-medium text-indigo-600 flex items-center gap-1">
+                                 <GraduationCap className="w-3 h-3" />
+                                 Lulus
+                               </span>
+                             ) : (
+                               <span className="font-medium text-emerald-600 flex items-center gap-1">
+                                 <ShieldCheck className="w-3 h-3" />
+                                 Aktif
+                               </span>
+                             )}
                         </div>
                         <div className="flex justify-between text-xs">
                              <span className="text-slate-500">Prodi</span>

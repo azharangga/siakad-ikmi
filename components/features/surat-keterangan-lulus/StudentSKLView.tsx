@@ -161,7 +161,7 @@ export default function StudentSKLView({
             </p>
           </div>
           <Button onClick={() => setIsPrintModalOpen(true)} size="lg" className="bg-white text-primary hover:bg-blue-50 font-bold shadow-lg gap-2 shrink-0 h-12 px-6 rounded-xl transition-all border border-white/30">
-            <Printer className="w-4 h-4 text-primary" /> Cetak SKL Mandiri
+            <Printer className="w-4 h-4 text-primary" /> Cetak SKL
           </Button>
         </div>
 
