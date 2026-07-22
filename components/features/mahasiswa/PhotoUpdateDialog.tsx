@@ -158,9 +158,10 @@ export function PhotoUpdateDialog({ user }: PhotoUpdateDialogProps) {
         const newAvatarUrl = await uploadAvatar(fd, user.avatar_url);
 
         // Update database user
-        await updateUserSettings(user.username, {
+        const res = await updateUserSettings(user.username, {
             avatar_url: newAvatarUrl
         });
+        if (!res.success) throw new Error(res.error || "Gagal memperbarui foto profil.");
 
         toast.success("Foto Berhasil Diupload", {
             description: "Pas foto Anda telah diperbarui."

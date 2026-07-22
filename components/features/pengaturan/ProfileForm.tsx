@@ -139,9 +139,10 @@ export default function ProfileForm({
 
         const newAvatarUrl = await uploadAvatar(fd, formData.avatar_url);
 
-        await updateUserSettings(user.username, {
+        const res = await updateUserSettings(user.username, {
             avatar_url: newAvatarUrl
         });
+        if (!res.success) throw new Error(res.error || "Gagal mengunggah foto.");
 
         setPreviewImage(newAvatarUrl);
         setFormData(prev => ({ ...prev, avatar_url: newAvatarUrl }));
@@ -187,11 +188,12 @@ export default function ProfileForm({
         await deleteAvatarFile(formData.avatar_url);
       }
 
-      await updateUserSettings(user.username, {
+      const res = await updateUserSettings(user.username, {
         nama: formData.nama,
         role: user.role,
         avatar_url: null,
       });
+      if (!res.success) throw new Error(res.error || "Gagal menghapus foto.");
 
       setPreviewImage(null);
       setFormData({ ...formData, avatar_url: "" });
@@ -214,12 +216,13 @@ export default function ProfileForm({
     e.preventDefault();
     setIsSaving(true);
     try {
-      await updateUserSettings(user.username, {
+      const res = await updateUserSettings(user.username, {
         nama: formData.nama,
         username: formData.username,
         alamat: formData.alamat,
         role: user.role,
       });
+      if (!res.success) throw new Error(res.error || "Gagal memperbarui profil.");
 
       toast.success("Profil Diperbarui", {
         description: "Perubahan pada profil Anda telah berhasil disimpan.",

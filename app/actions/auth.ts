@@ -157,68 +157,77 @@ export async function updateUserSettings(
   currentUsername: string,
   payload: any,
   oldPasswordForVerification?: string
-) {
-  // Inisialisasi Supabase Client
-  const supabase = createAdminClient();
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Inisialisasi Supabase Client
+    const supabase = createAdminClient();
 
-  const { nama, password, alamat, role, username: newUsername, avatar_url } = payload;
+    const { nama, password, alamat, role, username: newUsername, avatar_url } = payload;
 
-  const updates: any = {};
-  if (nama) updates.name = nama;
+    const updates: any = {};
+    if (nama) updates.name = nama;
 
-  if (avatar_url !== undefined) {
-    updates.avatar_url = avatar_url;
-  }
-
-  if (password) {
-    if (!oldPasswordForVerification) {
-      throw new Error("Password lama diperlukan untuk verifikasi.");
+    if (avatar_url !== undefined) {
+      updates.avatar_url = avatar_url;
     }
 
-    const { data: userRecord, error: fetchError } = await supabase
-      .from("users")
-      .select("password")
-      .eq("username", currentUsername)
-      .single();
+    if (password) {
+      if (!oldPasswordForVerification) {
+        return { success: false, error: "Password lama diperlukan untuk verifikasi." };
+      }
 
-    if (fetchError || !userRecord) {
-      throw new Error("Gagal memverifikasi user.");
+      const { data: userRecord, error: fetchError } = await supabase
+        .from("users")
+        .select("password")
+        .eq("username", currentUsername)
+        .single();
+
+      if (fetchError || !userRecord) {
+        return { success: false, error: "Gagal memverifikasi user." };
+      }
+
+      const isMatch = await bcrypt.compare(oldPasswordForVerification, userRecord.password);
+
+      if (!isMatch) {
+        return { success: false, error: "Kata sandi saat ini salah." };
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updates.password = hashedPassword;
     }
 
-    const isMatch = await bcrypt.compare(oldPasswordForVerification, userRecord.password);
+    if (newUsername) updates.username = newUsername;
 
-    if (!isMatch) {
-      throw new Error("Kata sandi saat ini salah.");
+    if (Object.keys(updates).length > 0) {
+      const { error: userError } = await supabase
+        .from("users")
+        .update(updates)
+        .eq("username", currentUsername);
+
+      if (userError) return { success: false, error: userError.message || "Gagal memperbarui data user." };
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    updates.password = hashedPassword;
+    if (role === "mahasiswa") {
+      const studentUpdates: any = {};
+      if (alamat !== undefined) studentUpdates.alamat = alamat;
+      if (nama) studentUpdates.nama = nama;
+      if (newUsername) studentUpdates.nim = newUsername;
+
+      if (Object.keys(studentUpdates).length > 0) {
+        const { error: studentError } = await supabase
+          .from("students")
+          .update(studentUpdates)
+          .eq("nim", currentUsername);
+
+        if (studentError) console.error("Gagal update tabel student:", studentError.message);
+      }
+    }
+
+    revalidatePath("/pengaturan-akun");
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error in updateUserSettings:", err);
+    return { success: false, error: err.message || "Terjadi kesalahan pada server." };
   }
-
-  if (newUsername) updates.username = newUsername;
-
-  const { error: userError } = await supabase
-    .from("users")
-    .update(updates)
-    .eq("username", currentUsername);
-
-  if (userError) throw new Error(userError.message);
-
-  if (role === "mahasiswa") {
-    const studentUpdates: any = {};
-    if (alamat !== undefined) studentUpdates.alamat = alamat;
-    if (nama) studentUpdates.nama = nama;
-    if (newUsername) studentUpdates.nim = newUsername;
-
-    const { error: studentError } = await supabase
-      .from("students")
-      .update(studentUpdates)
-      .eq("nim", currentUsername);
-
-    if (studentError) console.error("Gagal update tabel student:", studentError.message);
-  }
-
-  revalidatePath("/pengaturan-akun");
-  revalidatePath("/", "layout");
-  return { success: true };
 }

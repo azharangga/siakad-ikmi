@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Lock, KeyRound, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Lock, KeyRound, ShieldAlert, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,9 @@ interface PasswordFormProps {
 export default function PasswordForm({ user, onUpdateSuccess }: PasswordFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [passwordData, setPasswordData] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!user) return null;
 
@@ -31,13 +34,22 @@ export default function PasswordForm({ user, onUpdateSuccess }: PasswordFormProp
     }
     setIsSaving(true);
     try {
-      await updateUserSettings(user.username, { password: passwordData.newPassword, role: user.role }, passwordData.currentPassword);
+      const res = await updateUserSettings(user.username, { password: passwordData.newPassword, role: user.role }, passwordData.currentPassword);
+      if (!res.success) {
+        toast.error("Gagal Mengubah", { description: res.error || "Pastikan password lama benar." });
+        return;
+      }
+
       toast.success("Berhasil", { description: "Password diubah. Silakan login kembali." });
       setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
       onUpdateSuccess(passwordData.newPassword);
       setTimeout(async () => await logout(), 2000);
     } catch (error: any) {
-      toast.error("Gagal Mengubah", { description: error.message || "Pastikan password lama benar." });
+      const errorMsg = error?.message || "";
+      const isDigestError = errorMsg.includes("Server Components render") || errorMsg.includes("digest");
+      toast.error("Gagal Mengubah", { 
+        description: isDigestError ? "Terjadi kesalahan pada server saat memperbarui password. Silakan coba lagi." : (errorMsg || "Pastikan password lama benar.") 
+      });
     } finally { setIsSaving(false); }
   };
 
@@ -75,42 +87,66 @@ export default function PasswordForm({ user, onUpdateSuccess }: PasswordFormProp
              <div className="space-y-2">
                 <Label htmlFor="current_password" className="text-sm font-medium text-slate-700">Password Lama</Label>
                 <div className="relative group">
-                    <KeyRound size={16} className="absolute left-3.5 top-3 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+                    <KeyRound size={16} className="absolute left-3.5 top-3 text-slate-400 group-focus-within:text-slate-600 transition-colors pointer-events-none" />
                     <Input 
-                        id="current_password" type="password" required 
-                        className="pl-10 h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-100 transition-all rounded-lg"
+                        id="current_password" type={showCurrentPassword ? "text" : "password"} required 
+                        className="pl-10 pr-10 h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-100 transition-all rounded-lg"
                         placeholder="••••••••"
                         value={passwordData.currentPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        title={showCurrentPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    >
+                        {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                 </div>
              </div>
 
              <div className="space-y-2">
                 <Label htmlFor="new_password" className="text-sm font-medium text-slate-700">Password Baru</Label>
                 <div className="relative group">
-                    <Lock size={16} className="absolute left-3.5 top-3 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+                    <Lock size={16} className="absolute left-3.5 top-3 text-slate-400 group-focus-within:text-slate-600 transition-colors pointer-events-none" />
                     <Input 
-                        id="new_password" type="password" required 
-                        className="pl-10 h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-100 transition-all rounded-lg"
+                        id="new_password" type={showNewPassword ? "text" : "password"} required 
+                        className="pl-10 pr-10 h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-100 transition-all rounded-lg"
                         placeholder="Minimal 6 karakter"
                         value={passwordData.newPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        title={showNewPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    >
+                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                 </div>
              </div>
 
              <div className="space-y-2">
                 <Label htmlFor="confirm_password" className="text-sm font-medium text-slate-700">Konfirmasi Password</Label>
                 <div className="relative group">
-                    <CheckCircle2 size={16} className="absolute left-3.5 top-3 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+                    <CheckCircle2 size={16} className="absolute left-3.5 top-3 text-slate-400 group-focus-within:text-slate-600 transition-colors pointer-events-none" />
                     <Input 
-                        id="confirm_password" type="password" required 
-                        className="pl-10 h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-100 transition-all rounded-lg"
+                        id="confirm_password" type={showConfirmPassword ? "text" : "password"} required 
+                        className="pl-10 pr-10 h-10 bg-slate-50 border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-slate-100 transition-all rounded-lg"
                         placeholder="Ulangi password baru"
                         value={passwordData.confirmPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        title={showConfirmPassword ? "Sembunyikan password" : "Tampilkan password"}
+                    >
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                 </div>
              </div>
           </div>
