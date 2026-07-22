@@ -45,7 +45,7 @@ export default function StudentKHSView({ initialStudentData, initialOfficial }: 
   const [selectedSemester, setSelectedSemester] = useState<number>(0);
   const [printSemester, setPrintSemester] = useState<number>(0); // Decoupled state for printing
 
-  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none");
+  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none", official);
   
   // Derive Signature
   const secureImage = useMemo(() => {

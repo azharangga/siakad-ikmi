@@ -50,7 +50,7 @@ export default function AdminKHSView({ initialStudents, initialStudyPrograms }: 
   // Print Configuration State
   const [printSemester, setPrintSemester] = useState<number>(0);
 
-  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none");
+  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none", official);
   const { showLoading, dismiss } = useToastMessage();
   
   // Derive Signature from Official

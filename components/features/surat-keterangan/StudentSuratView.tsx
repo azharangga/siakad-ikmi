@@ -33,7 +33,7 @@ export default function StudentSuratView({ initialStudentData, initialAcademicYe
   const [namaOrangTua, setNamaOrangTua] = useState("");
   const [pekerjaanOrangTua, setPekerjaanOrangTua] = useState("");
 
-  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none");
+  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none", official);
   const { showLoading, dismiss } = useToastMessage();
   const toastIdRef = React.useRef<string | number | null>(null);
 

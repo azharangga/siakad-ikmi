@@ -42,7 +42,7 @@ export default function StudentTranskripView({ initialStudentData, initialOffici
 
 
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const { signatureType, setSignatureType, isLoading: isSigLoading  } = useSignature("none");
+  const { signatureType, setSignatureType, isLoading: isSigLoading  } = useSignature("none", official);
   
   // Derive Signature
   const secureImage = useMemo(() => {

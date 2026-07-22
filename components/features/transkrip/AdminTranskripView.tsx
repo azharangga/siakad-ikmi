@@ -48,7 +48,7 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
   
   // Print Configuration State
-  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none");
+  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none", official);
   const { isPrinting, printPdf } = usePdfPrint();
   const printRef = useRef<HTMLDivElement>(null);
   const { showLoading, dismiss } = useToastMessage();
