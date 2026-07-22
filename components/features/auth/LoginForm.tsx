@@ -255,7 +255,7 @@ export function LoginForm({ enableTurnstile = true }: LoginFormProps) {
             </Button>
 
             <p className="text-center text-xs text-slate-400 dark:text-slate-500">
-              &copy; {new Date().getFullYear()} STMIK IKMI Cirebon. All rights reserved.
+              &copy; {new Date().getFullYear()} <span className="font-semibold text-slate-600 dark:text-slate-400">Azharangga Kusuma</span>. All rights reserved.
             </p>
           </CardFooter>
         </form>
