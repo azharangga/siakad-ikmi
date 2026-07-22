@@ -26,23 +26,41 @@ const handleDbError = (error: any, context: string) => {
 
 // Ambil semua mata kuliah beserta relasi program studi
 export async function getCourses() {
-  const { data, error } = await supabase
-    .from('courses')
-    .select(`
-      *,
-      course_study_programs (
-        study_program:study_programs (id, kode, nama, jenjang)
-      )
-    `)
-    .order('matkul', { ascending: true });
+  let allCoursesData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Error fetching courses:", error.message);
-    return [];
+  while (hasMore) {
+    const { data: pageData, error } = await supabase
+      .from('courses')
+      .select(`
+        *,
+        course_study_programs (
+          study_program:study_programs (id, kode, nama, jenjang)
+        )
+      `)
+      .order('matkul', { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) {
+      console.error("Error fetching courses page:", error.message);
+      break;
+    }
+
+    if (!pageData || pageData.length === 0) {
+      hasMore = false;
+    } else {
+      allCoursesData.push(...pageData);
+      if (pageData.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
 
-  // Transform data untuk flatten structure study_programs
-  const transformedData = data.map((course: any) => ({
+  const transformedData = allCoursesData.map((course: any) => ({
     ...course,
     study_programs: course.course_study_programs?.map((csp: any) => csp.study_program).filter(Boolean) || []
   }));

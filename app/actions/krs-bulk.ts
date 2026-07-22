@@ -16,25 +16,62 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
 
     if (!academicYear) return [];
 
-    // 1. Ambil semua mahasiswa aktif
-    const { data: allStudents, error: studentError } = await supabase
-      .from("students")
-      .select(`
-        id, nim, nama, angkatan, status_mahasiswa,
-        study_program:study_programs (nama, jenjang)
-      `)
-      .eq("is_active", true)
-      .order("nama", { ascending: true });
+    // 1. Ambil semua mahasiswa aktif - CHUNKED PAGINATION
+    let allStudents: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (studentError) throw studentError;
+    while (hasMore) {
+      const { data: pageStudents, error: studentError } = await supabase
+        .from("students")
+        .select(`
+          id, nim, nama, angkatan, status_mahasiswa,
+          study_program:study_programs (nama, jenjang)
+        `)
+        .eq("is_active", true)
+        .order("nama", { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
 
-    // 2. Ambil student_id yang SUDAH punya KRS di tahun ini
-    const { data: existingKRS, error: krsError } = await supabase
-      .from("krs")
-      .select("student_id")
-      .eq("academic_year_id", academicYearId);
+      if (studentError) throw studentError;
 
-    if (krsError) throw krsError;
+      if (!pageStudents || pageStudents.length === 0) {
+        hasMore = false;
+      } else {
+        allStudents.push(...pageStudents);
+        if (pageStudents.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
+    }
+
+    // 2. Ambil student_id yang SUDAH punya KRS di tahun ini - CHUNKED PAGINATION
+    let existingKRS: any[] = [];
+    let krsPage = 0;
+    let hasMoreKrs = true;
+
+    while (hasMoreKrs) {
+      const { data: pageKrs, error: krsError } = await supabase
+        .from("krs")
+        .select("student_id")
+        .eq("academic_year_id", academicYearId)
+        .range(krsPage * pageSize, (krsPage + 1) * pageSize - 1);
+
+      if (krsError) throw krsError;
+
+      if (!pageKrs || pageKrs.length === 0) {
+        hasMoreKrs = false;
+      } else {
+        existingKRS.push(...pageKrs);
+        if (pageKrs.length < pageSize) {
+          hasMoreKrs = false;
+        } else {
+          krsPage++;
+        }
+      }
+    }
 
     const studentIdsWithKRS = new Set(existingKRS.map((k: any) => k.student_id));
 

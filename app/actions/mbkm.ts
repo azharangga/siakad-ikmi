@@ -8,25 +8,39 @@ const supabase = createAdminClient();
 
 // 1. Get All MBKM Students
 export async function getMbkmStudents() {
-  const { data, error } = await supabase
-    .from('student_mbkm')
-    .select(`
-      *,
-      student:students (
-        id, nim, nama, 
-        study_program:study_programs(nama, jenjang)
-      ),
-      academic_year:academic_years (
-        id, nama, semester
-      )
-    `)
-    .order('created_at', { ascending: false });
+  let allData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Error fetching MBKM:", error);
-    return [];
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('student_mbkm')
+      .select(`
+        *,
+        student:students (
+          id, nim, nama, 
+          study_program:study_programs(nama, jenjang)
+        ),
+        academic_year:academic_years (
+          id, nama, semester
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error || !data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allData.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
-  return data as StudentMBKM[];
+  return allData as StudentMBKM[];
 }
 
 export async function getMbkmByStudentId(studentId: string) {

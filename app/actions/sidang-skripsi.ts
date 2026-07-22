@@ -7,22 +7,36 @@ import { SidangSkripsi, SidangSkripsiFormValues } from "@/lib/types";
 const supabase = createAdminClient();
 
 export async function getSidangSkripsi(): Promise<SidangSkripsi[]> {
-  const { data, error } = await supabase
-    .from('sidang_skripsi')
-    .select(`
-      *,
-      student:students (
-        id, nim, nama,
-        study_program:study_programs(nama, jenjang)
-      )
-    `)
-    .order('tanggal_sidang', { ascending: false });
+  let allData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Error fetching sidang skripsi:", error);
-    return [];
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('sidang_skripsi')
+      .select(`
+        *,
+        student:students (
+          id, nim, nama,
+          study_program:study_programs(nama, jenjang)
+        )
+      `)
+      .order('tanggal_sidang', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error || !data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allData.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
-  return data as unknown as SidangSkripsi[];
+  return allData as unknown as SidangSkripsi[];
 }
 
 export async function getSidangByStudentId(studentId: string): Promise<SidangSkripsi | null> {

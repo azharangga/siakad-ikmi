@@ -9,31 +9,59 @@ const supabaseAdmin = createAdminClient();
 
 // === GET LECTURERS ===
 export async function getLecturers() {
-  const { data, error } = await supabaseAdmin
-    .from("lecturers")
-    .select("*")
-    .order("nama", { ascending: true }); // [FIX] Order by nama instead of created_at
+  let allData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Error fetching lecturers:", error.message);
-    return [];
+  while (hasMore) {
+    const { data, error } = await supabaseAdmin
+      .from("lecturers")
+      .select("*")
+      .order("nama", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error || !data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allData.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
-  return data as Lecturer[];
+  return allData as Lecturer[];
 }
 
 // === GET ACTIVE LECTURERS (For Dropdown) ===
 export async function getActiveLecturers() {
-  const { data, error } = await supabaseAdmin
-    .from("lecturers")
-    .select("*")
-    .eq("is_active", true)
-    .order("nama", { ascending: true });
+  let allData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Error fetching active lecturers:", error.message);
-    return [];
+  while (hasMore) {
+    const { data, error } = await supabaseAdmin
+      .from("lecturers")
+      .select("*")
+      .eq("is_active", true)
+      .order("nama", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error || !data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allData.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
-  return data as Lecturer[];
+  return allData as Lecturer[];
 }
 
 // === CREATE LECTURER ===

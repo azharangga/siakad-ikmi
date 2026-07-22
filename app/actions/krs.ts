@@ -295,19 +295,38 @@ export async function getStudentsWithSubmittedKRS(academicYearId: string) {
       .eq("id", academicYearId)
       .single();
 
-    const { data: krsList, error } = await supabase
-      .from("krs")
-      .select(`
-        student_id, status,
-        students:students (
-          id, nim, nama, angkatan,
-          study_program:study_programs (nama, jenjang)
-        )
-      `)
-      .eq("academic_year_id", academicYearId)
-      .in("status", ["SUBMITTED", "APPROVED", "REJECTED"]);
+    let krsList: any[] = [];
+    let krsPage = 0;
+    const pageSize = 1000;
+    let hasMoreKrs = true;
 
-    if (error) throw error;
+    while (hasMoreKrs) {
+      const { data: pageKrs, error } = await supabase
+        .from("krs")
+        .select(`
+          student_id, status,
+          students:students (
+            id, nim, nama, angkatan, status_mahasiswa,
+            study_program:study_programs (nama, jenjang)
+          )
+        `)
+        .eq("academic_year_id", academicYearId)
+        .in("status", ["SUBMITTED", "APPROVED", "REJECTED"])
+        .range(krsPage * pageSize, (krsPage + 1) * pageSize - 1);
+
+      if (error) throw error;
+
+      if (!pageKrs || pageKrs.length === 0) {
+        hasMoreKrs = false;
+      } else {
+        krsList.push(...pageKrs);
+        if (pageKrs.length < pageSize) {
+          hasMoreKrs = false;
+        } else {
+          krsPage++;
+        }
+      }
+    }
 
     const studentMap = new Map<string, any>();
 

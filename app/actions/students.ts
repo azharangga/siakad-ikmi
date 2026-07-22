@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { StudentData, TranscriptItem, StudentFormValues, StudyProgram, AcademicYear, Official } from "@/lib/types";
 import { calculateStudentSemester } from "@/lib/academic-utils";
+import { calculateTotalSKSLulus } from "@/lib/grade-calculations";
 
 const supabaseAdmin = createAdminClient();
 
@@ -157,52 +158,87 @@ export async function getOfficialForDocument(studyProgramId?: string): Promise<O
 export async function getStudents(): Promise<StudentData[]> {
   const activeYear = await getActiveAcademicYear();
 
-  // 1. AMBIL DATA USERS SECARA TERPISAH (Untuk Foto)
-  const { data: usersData } = await supabaseAdmin
-    .from('users')
-    .select('student_id, avatar_url')
-    .not('student_id', 'is', null);
+  // 1. AMBIL DATA USERS SECARA TERPISAH (Untuk Foto) - CHUNKED PAGINATION
+  let usersData: any[] = [];
+  let userPage = 0;
+  const pageSize = 1000;
+  let hasMoreUsers = true;
+
+  while (hasMoreUsers) {
+    const { data: pageUsers } = await supabaseAdmin
+      .from('users')
+      .select('student_id, avatar_url')
+      .not('student_id', 'is', null)
+      .range(userPage * pageSize, (userPage + 1) * pageSize - 1);
+
+    if (!pageUsers || pageUsers.length === 0) {
+      hasMoreUsers = false;
+    } else {
+      usersData.push(...pageUsers);
+      if (pageUsers.length < pageSize) {
+        hasMoreUsers = false;
+      } else {
+        userPage++;
+      }
+    }
+  }
 
   const avatarMap = new Map<string, string>();
-  if (usersData) {
-    usersData.forEach((u) => {
-      if (u.student_id && u.avatar_url) {
-        avatarMap.set(u.student_id, u.avatar_url);
+  usersData.forEach((u) => {
+    if (u.student_id && u.avatar_url) {
+      avatarMap.set(u.student_id, u.avatar_url);
+    }
+  });
+
+  // 2. AMBIL DATA MAHASISWA - CHUNKED PAGINATION (BYPASS SUPABASE 1000 ROW LIMIT)
+  let allStudentsData: any[] = [];
+  let studentPage = 0;
+  let hasMoreStudents = true;
+
+  while (hasMoreStudents) {
+    const { data: pageData, error } = await supabaseAdmin
+      .from('students')
+      .select(`
+        *,
+        study_programs (
+          id, kode, nama, jenjang
+        ),
+        grades (
+          id, hm,
+          courses (
+            id, kode, matkul, sks, smt_default
+          )
+        ),
+        krs (
+          status,
+          courses (
+            id, kode, matkul, sks, smt_default
+          )
+        )
+      `)
+      .order('nama', { ascending: true })
+      .range(studentPage * pageSize, (studentPage + 1) * pageSize - 1);
+
+    if (error) {
+      console.error("Error fetching students page:", error.message);
+      break;
+    }
+
+    if (!pageData || pageData.length === 0) {
+      hasMoreStudents = false;
+    } else {
+      allStudentsData.push(...pageData);
+      if (pageData.length < pageSize) {
+        hasMoreStudents = false;
+      } else {
+        studentPage++;
       }
-    });
+    }
   }
 
-  // 2. AMBIL DATA MAHASISWA
-  const { data, error } = await supabaseAdmin
-    .from('students')
-    .select(`
-      *,
-      study_programs (
-        id, kode, nama, jenjang
-      ),
-      grades (
-        id, hm,
-        courses (
-          id, kode, matkul, sks, smt_default
-        )
-      ),
-      krs (
-        status,
-        courses (
-          id, kode, matkul, sks, smt_default
-        )
-      )
-    `)
-    .order('nama', { ascending: true });
+  if (allStudentsData.length === 0) return [];
 
-  if (error) {
-    console.error("Error fetching students:", error.message);
-    return [];
-  }
-
-  if (!data) return [];
-
-  const students = data as unknown as DBResponseStudent[];
+  const students = allStudentsData as unknown as DBResponseStudent[];
 
   return students.map((s) => {
     const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear, s.status_mahasiswa);
@@ -280,7 +316,7 @@ export async function getStudents(): Promise<StudentData[]> {
         email: s.email,
       },
       transcript: fullTranscript,
-      total_sks: totalSksApproved
+      total_sks: calculateTotalSKSLulus(fullTranscript)
     };
   });
 }
@@ -400,7 +436,7 @@ export async function getStudentById(id: string): Promise<StudentData | null> {
       email: s.email,
     },
     transcript: fullTranscript,
-    total_sks: totalSksApproved
+    total_sks: calculateTotalSKSLulus(fullTranscript)
   };
 }
 
@@ -602,7 +638,7 @@ export async function getStudentByNim(nim: string): Promise<StudentData | null> 
       email: s.email,
     },
     transcript: fullTranscript,
-    total_sks: totalSksApproved
+    total_sks: calculateTotalSKSLulus(fullTranscript)
   };
 }
 
@@ -625,38 +661,75 @@ export async function checkExistingNims(nims: string[]): Promise<string[]> {
 export async function getAllStudentsForKtm(): Promise<StudentData[]> {
   const activeYear = await getActiveAcademicYear();
 
-  // Fetch avatar mapping
-  const { data: usersData } = await supabaseAdmin
-    .from('users')
-    .select('student_id, avatar_url')
-    .not('student_id', 'is', null);
+  // Fetch avatar mapping - CHUNKED
+  let usersData: any[] = [];
+  let userPage = 0;
+  const pageSize = 1000;
+  let hasMoreUsers = true;
+
+  while (hasMoreUsers) {
+    const { data: pageUsers } = await supabaseAdmin
+      .from('users')
+      .select('student_id, avatar_url')
+      .not('student_id', 'is', null)
+      .range(userPage * pageSize, (userPage + 1) * pageSize - 1);
+
+    if (!pageUsers || pageUsers.length === 0) {
+      hasMoreUsers = false;
+    } else {
+      usersData.push(...pageUsers);
+      if (pageUsers.length < pageSize) {
+        hasMoreUsers = false;
+      } else {
+        userPage++;
+      }
+    }
+  }
 
   const avatarMap = new Map<string, string>();
-  if (usersData) {
-    usersData.forEach((u) => {
-      if (u.student_id && u.avatar_url) {
-        avatarMap.set(u.student_id, u.avatar_url);
+  usersData.forEach((u) => {
+    if (u.student_id && u.avatar_url) {
+      avatarMap.set(u.student_id, u.avatar_url);
+    }
+  });
+
+  // Fetch students with minimal data for KTM - CHUNKED PAGINATION
+  let allStudentsData: any[] = [];
+  let studentPage = 0;
+  let hasMoreStudents = true;
+
+  while (hasMoreStudents) {
+    const { data: pageData, error } = await supabaseAdmin
+      .from('students')
+      .select(`
+        id, nim, nama, alamat, angkatan, study_program_id, status_mahasiswa,
+        study_programs (
+          id, kode, nama, jenjang
+        )
+      `)
+      .order('nama', { ascending: true })
+      .range(studentPage * pageSize, (studentPage + 1) * pageSize - 1);
+
+    if (error) {
+      console.error("Error fetching students for KTM:", error.message);
+      break;
+    }
+
+    if (!pageData || pageData.length === 0) {
+      hasMoreStudents = false;
+    } else {
+      allStudentsData.push(...pageData);
+      if (pageData.length < pageSize) {
+        hasMoreStudents = false;
+      } else {
+        studentPage++;
       }
-    });
+    }
   }
 
-  // Fetch students with minimal data for KTM
-  const { data, error } = await supabaseAdmin
-    .from('students')
-    .select(`
-      id, nim, nama, alamat, angkatan, study_program_id, is_active,
-      study_programs (
-        id, kode, nama, jenjang
-      )
-    `)
-    .order('nama', { ascending: true });
+  if (allStudentsData.length === 0) return [];
 
-  if (error) {
-    console.error("Error fetching students for KTM:", error.message);
-    return [];
-  }
-
-  if (!data) return [];
+  const data = allStudentsData;
 
   return data.map((s: any) => {
     const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear, s.status_mahasiswa);

@@ -27,35 +27,89 @@ const handleDbError = (error: any, context: string) => {
 
 // === GET USERS ===
 export async function getUsers() {
-  const { data, error } = await supabaseAdmin
-    .from("users")
-    .select("id, name, username, role, student_id, lecturer_id, is_active, avatar_url")
-    .order("name", { ascending: true });
+  let allUsers: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) {
-    console.error("Error fetching users:", error.message);
-    return [];
+  while (hasMore) {
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .select("id, name, username, role, student_id, lecturer_id, is_active, avatar_url")
+      .order("name", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error || !data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allUsers.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
-  return data as UserData[];
+
+  return allUsers as UserData[];
 }
 
 // === HELPER: GET STUDENTS FOR SELECTION ===
 export async function getStudentsForSelection(excludeUserId?: string) {
-  const { data: students, error } = await supabaseAdmin
-    .from("students")
-    .select("id, nim, nama")
-    .order("nim", { ascending: true });
+  let students: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error || !students) return [];
+  while (hasMore) {
+    const { data: pageStudents, error } = await supabaseAdmin
+      .from("students")
+      .select("id, nim, nama")
+      .order("nim", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
 
-  let query = supabaseAdmin.from("users").select("student_id").not("student_id", "is", null);
-
-  if (excludeUserId) {
-    query = query.neq("id", excludeUserId);
+    if (error || !pageStudents || pageStudents.length === 0) {
+      hasMore = false;
+    } else {
+      students.push(...pageStudents);
+      if (pageStudents.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
 
-  const { data: usedUsers } = await query;
-  const usedStudentIds = new Set(usedUsers?.map((u) => u.student_id));
+  let usedUsers: any[] = [];
+  let userPage = 0;
+  let hasMoreUsers = true;
+
+  while (hasMoreUsers) {
+    let query = supabaseAdmin
+      .from("users")
+      .select("student_id")
+      .not("student_id", "is", null)
+      .range(userPage * pageSize, (userPage + 1) * pageSize - 1);
+
+    if (excludeUserId) {
+      query = query.neq("id", excludeUserId);
+    }
+
+    const { data: pageUsers } = await query;
+
+    if (!pageUsers || pageUsers.length === 0) {
+      hasMoreUsers = false;
+    } else {
+      usedUsers.push(...pageUsers);
+      if (pageUsers.length < pageSize) {
+        hasMoreUsers = false;
+      } else {
+        userPage++;
+      }
+    }
+  }
+
+  const usedStudentIds = new Set(usedUsers.map((u) => u.student_id));
 
   return students.map((s) => ({
     id: s.id,
@@ -67,21 +121,60 @@ export async function getStudentsForSelection(excludeUserId?: string) {
 
 // === HELPER: GET LECTURERS FOR SELECTION ===
 export async function getLecturersForSelection(excludeUserId?: string) {
-  const { data: lecturers, error } = await supabaseAdmin
-    .from("lecturers")
-    .select("id, nidn, nama")
-    .order("nama", { ascending: true });
+  let lecturers: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error || !lecturers) return [];
+  while (hasMore) {
+    const { data: pageLecturers, error } = await supabaseAdmin
+      .from("lecturers")
+      .select("id, nidn, nama")
+      .order("nama", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
 
-  let query = supabaseAdmin.from("users").select("lecturer_id").not("lecturer_id", "is", null);
-
-  if (excludeUserId) {
-    query = query.neq("id", excludeUserId);
+    if (error || !pageLecturers || pageLecturers.length === 0) {
+      hasMore = false;
+    } else {
+      lecturers.push(...pageLecturers);
+      if (pageLecturers.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
   }
 
-  const { data: usedUsers } = await query;
-  const usedLecturerIds = new Set(usedUsers?.map((u) => u.lecturer_id));
+  let usedUsers: any[] = [];
+  let userPage = 0;
+  let hasMoreUsers = true;
+
+  while (hasMoreUsers) {
+    let query = supabaseAdmin
+      .from("users")
+      .select("lecturer_id")
+      .not("lecturer_id", "is", null)
+      .range(userPage * pageSize, (userPage + 1) * pageSize - 1);
+
+    if (excludeUserId) {
+      query = query.neq("id", excludeUserId);
+    }
+
+    const { data: pageUsers } = await query;
+
+    if (!pageUsers || pageUsers.length === 0) {
+      hasMoreUsers = false;
+    } else {
+      usedUsers.push(...pageUsers);
+      if (pageUsers.length < pageSize) {
+        hasMoreUsers = false;
+      } else {
+        userPage++;
+      }
+    }
+  }
+
+  const usedLecturerIds = new Set(usedUsers.map((u) => u.lecturer_id));
 
   return lecturers.map((l) => ({
     id: l.id,

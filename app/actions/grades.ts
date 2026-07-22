@@ -9,25 +9,44 @@ const supabase = createAdminClient();
 // --- FETCH DATA ---
 
 export async function getGrades(): Promise<GradeData[]> {
-  const { data, error } = await supabase
-    .from("grades")
-    .select(`
-      *,
-      student:students (
-        id, 
-        nim, 
-        nama, 
-        study_program:study_programs (
-           nama,
-           jenjang
-        )
-      ),
-      course:courses (id, kode, matkul, sks)
-    `)
-    .order("hm", { ascending: true });
+  let allData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-  if (error) throw new Error(error.message);
-  return data as unknown as GradeData[];
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("grades")
+      .select(`
+        *,
+        student:students (
+          id, 
+          nim, 
+          nama, 
+          study_program:study_programs (
+             nama,
+             jenjang
+          )
+        ),
+        course:courses (id, kode, matkul, sks)
+      `)
+      .order("hm", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw new Error(error.message);
+
+    if (!data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allData.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
+  }
+  return allData as unknown as GradeData[];
 }
 
 export async function getStudentCoursesForGrading(studentId: string) {
@@ -59,21 +78,61 @@ export async function getStudentCoursesForGrading(studentId: string) {
 }
 
 export async function getStudentsForSelect() {
-  const { data, error } = await supabase
-    .from("students")
-    .select("id, nim, nama")
-    .order("nama", { ascending: true });
-  if (error) throw new Error(error.message);
-  return data;
+  let allData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("students")
+      .select("id, nim, nama")
+      .order("nama", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw new Error(error.message);
+
+    if (!data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allData.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
+  }
+  return allData;
 }
 
 export async function getCoursesForSelect() {
-  const { data, error } = await supabase
-    .from("courses")
-    .select("id, kode, matkul, sks, smt_default")
-    .order("matkul", { ascending: true });
-  if (error) throw new Error(error.message);
-  return data;
+  let allData: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("courses")
+      .select("id, kode, matkul, sks, smt_default")
+      .order("matkul", { ascending: true })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw new Error(error.message);
+
+    if (!data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allData.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
+  }
+  return allData;
 }
 
 // --- Fetch Grade Summary (Dashboard) ---
