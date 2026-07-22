@@ -141,7 +141,7 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
                                     <tr className="border-b border-gray-100">
                                         <td className="py-3 px-2 text-gray-500 font-medium">Status Mahasiswa Saat Ini</td>
                                         <td className="py-3 px-2 text-gray-900">
-                                            {student.profile.is_active ? "Aktif" : "Tidak Aktif"}
+                                            {student.profile.status_mahasiswa || "AKTIF"}
                                         </td>
                                     </tr>
                                 </tbody>

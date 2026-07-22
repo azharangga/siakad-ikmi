@@ -15,6 +15,14 @@ import LecturerForm from "@/components/features/dosen/LecturerForm";
 import { type Lecturer, type LecturerFormValues } from "@/lib/types";
 import { createLecturer, updateLecturer, deleteLecturer } from "@/app/actions/lecturers";
 import Image from "next/image";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LecturersClientProps {
   initialData: Lecturer[];
@@ -29,6 +37,7 @@ export default function LecturersClient({ initialData }: LecturersClientProps) {
   
   // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -53,9 +62,10 @@ export default function LecturersClient({ initialData }: LecturersClientProps) {
         item.nama.toLowerCase().includes(query) ||
         (item.nidn && item.nidn.toLowerCase().includes(query));
       
-      return matchSearch;
+      const matchStatus = statusFilter === "ALL" || (statusFilter === "active" ? item.is_active : !item.is_active);
+      return matchSearch && matchStatus;
     });
-  }, [dataList, searchQuery]);
+  }, [dataList, searchQuery, statusFilter]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -207,6 +217,26 @@ export default function LecturersClient({ initialData }: LecturersClientProps) {
     }
   ];
 
+  const activeFilterCount = statusFilter !== "ALL" ? 1 : 0;
+
+  const filterContent = (
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Status Mengajar Dosen</Label>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Status</SelectItem>
+            <SelectItem value="active">Aktif Mengajar</SelectItem>
+            <SelectItem value="inactive">Non Aktif</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4 pb-10 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
@@ -224,6 +254,10 @@ export default function LecturersClient({ initialData }: LecturersClientProps) {
             searchPlaceholder="Cari Nama / NIDN..."
             onAdd={handleOpenAdd}
             addLabel="Tambah Dosen"
+            filterContent={filterContent}
+            isFilterActive={activeFilterCount > 0}
+            activeFilterCount={activeFilterCount}
+            onResetFilter={() => { setStatusFilter("ALL"); setSearchQuery(""); }}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}

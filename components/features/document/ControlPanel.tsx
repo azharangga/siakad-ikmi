@@ -234,7 +234,7 @@ export default function ControlPanel(props: ControlPanelProps) {
                 <SelectContent className="rounded-xl">
                     <SelectItem value="none" className="text-xs rounded-lg cursor-pointer">Tanpa tanda tangan</SelectItem>
                     {official?.ttd_basah_url && <SelectItem value="basah" className="text-xs rounded-lg cursor-pointer">Tanda tangan basah</SelectItem>}
-                    {official?.ttd_digital_url && <SelectItem value="digital" className="text-xs rounded-lg cursor-pointer">Tanda tangan digital (QR)</SelectItem>}
+                    {official?.ttd_digital_url && <SelectItem value="digital" className="text-xs rounded-lg cursor-pointer">Tanda tangan digital</SelectItem>}
                 </SelectContent>
                 </Select>
             </div>

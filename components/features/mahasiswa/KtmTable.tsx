@@ -8,12 +8,14 @@ import { Printer, FileArchive, Loader2, User } from "lucide-react";
 import { StudentData } from "@/lib/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import Image from "next/image";
+import { Label } from "@/components/ui/label";
 import {
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface KtmTableProps {
   data: StudentData[];
@@ -193,38 +195,42 @@ export default function KtmTable({
     },
   ];
 
-  // === FILTER CONTENT ===
-  const filterContent = (
-    <div className="max-h-[300px] overflow-y-auto">
-        <DropdownMenuLabel>Filter Prodi</DropdownMenuLabel>
-        <DropdownMenuRadioGroup 
-            value={prodiFilter} 
-            onValueChange={(v) => { 
-                setProdiFilter(v);
-                setCurrentPage(1); 
-            }}
-        >
-            <DropdownMenuRadioItem value="ALL">Semua Prodi</DropdownMenuRadioItem>
-            {uniqueProdi.map((prodi) => (
-                <DropdownMenuRadioItem key={prodi} value={prodi}>{prodi}</DropdownMenuRadioItem>
-            ))}
-        </DropdownMenuRadioGroup>
+  const activeFilterCount = [
+    prodiFilter !== "ALL",
+    angkatanFilter !== "ALL"
+  ].filter(Boolean).length;
 
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuLabel>Filter Angkatan</DropdownMenuLabel>
-        <DropdownMenuRadioGroup 
-            value={angkatanFilter} 
-            onValueChange={(v) => { 
-                setAngkatanFilter(v);
-                setCurrentPage(1); 
-            }}
-        >
-            <DropdownMenuRadioItem value="ALL">Semua Angkatan</DropdownMenuRadioItem>
-            {uniqueAngkatan.map((angkatan) => (
-                <DropdownMenuRadioItem key={angkatan} value={angkatan.toString()}>{angkatan}</DropdownMenuRadioItem>
+  const filterContent = (
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Program Studi</Label>
+        <Select value={prodiFilter} onValueChange={(v) => { setProdiFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Program Studi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Program Studi</SelectItem>
+            {uniqueProdi.map((prodi) => (
+              <SelectItem key={prodi} value={prodi}>{prodi}</SelectItem>
             ))}
-        </DropdownMenuRadioGroup>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Angkatan</Label>
+        <Select value={angkatanFilter} onValueChange={(v) => { setAngkatanFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Angkatan" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Angkatan</SelectItem>
+            {uniqueAngkatan.map((angkatan) => (
+              <SelectItem key={angkatan} value={angkatan.toString()}>{angkatan}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 
@@ -265,7 +271,8 @@ export default function KtmTable({
           searchPlaceholder="Cari nama atau NIM..."
           
           filterContent={filterContent}
-          isFilterActive={prodiFilter !== "ALL" || angkatanFilter !== "ALL"}
+          isFilterActive={activeFilterCount > 0}
+          activeFilterCount={activeFilterCount}
           onResetFilter={() => {
             setProdiFilter("ALL");
             setAngkatanFilter("ALL");

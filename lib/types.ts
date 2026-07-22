@@ -105,6 +105,8 @@ export type CoursePayload = CourseFormValues;
 // =========================================
 // STUDENT (MAHASISWA)
 // =========================================
+export type StatusMahasiswa = 'AKTIF' | 'CUTI' | 'NON_AKTIF' | 'LULUS' | 'DROP_OUT' | 'MENGUNDURKAN_DIRI' | 'MUTASI';
+
 export interface StudentProfile {
   id: string;
   nim: string;
@@ -114,7 +116,7 @@ export interface StudentProfile {
   semester: number;
   study_program_id: string | null;
   study_program?: StudyProgram | null;
-  is_active: boolean;
+  status_mahasiswa: StatusMahasiswa | string;
   avatar_url?: string | null;
   jenis_kelamin?: string | null;
   tempat_lahir?: string | null;
@@ -132,7 +134,7 @@ export interface StudentFormValues {
   angkatan: string | number;
   alamat: string;
   study_program_id: string;
-  is_active: boolean;
+  status_mahasiswa: StatusMahasiswa | string;
   avatar_url?: string | null;
   jenis_kelamin: string;
   tempat_lahir: string;

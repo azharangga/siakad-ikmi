@@ -173,7 +173,7 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
                       <SelectContent>
                           <SelectItem value="none">Tanpa Tanda Tangan</SelectItem>
                           {official?.ttd_basah_url && <SelectItem value="basah">Tanda Tangan Basah</SelectItem>}
-                          {official?.ttd_digital_url && <SelectItem value="digital">Tanda Tangan Digital (QR)</SelectItem>}
+                          {official?.ttd_digital_url && <SelectItem value="digital">Tanda Tangan Digital</SelectItem>}
                       </SelectContent>
                   </Select>
               </div>

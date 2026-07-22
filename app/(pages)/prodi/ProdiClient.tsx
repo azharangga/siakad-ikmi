@@ -13,7 +13,14 @@ import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { ProdiForm } from "@/components/features/prodi/ProdiForm";
 import { StudyProgram, StudyProgramFormValues } from "@/lib/types";
 import { createStudyProgram, updateStudyProgram, deleteStudyProgram } from "@/app/actions/prodi";
-import { DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProdiClientProps {
   initialData: StudyProgram[];
@@ -174,16 +181,23 @@ export default function ProdiClient({ initialData }: ProdiClientProps) {
   ];
 
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Jenjang</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={jenjangFilter} onValueChange={(v) => { setJenjangFilter(v); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="D3">D3</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="D4">D4</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="S1">S1</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="S2">S2</DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Jenjang Pendidikan</Label>
+        <Select value={jenjangFilter} onValueChange={(v) => { setJenjangFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Jenjang" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Jenjang</SelectItem>
+            <SelectItem value="D3">D3</SelectItem>
+            <SelectItem value="D4">D4</SelectItem>
+            <SelectItem value="S1">S1</SelectItem>
+            <SelectItem value="S2">S2</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 
   return (
@@ -202,6 +216,7 @@ export default function ProdiClient({ initialData }: ProdiClientProps) {
             onAdd={handleOpenAdd}
             filterContent={filterContent}
             isFilterActive={jenjangFilter !== "ALL"}
+            activeFilterCount={jenjangFilter !== "ALL" ? 1 : 0}
             onResetFilter={() => { setJenjangFilter("ALL"); setSearchQuery(""); }}
             currentPage={currentPage}
             totalPages={totalPages}

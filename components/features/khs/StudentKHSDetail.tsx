@@ -261,7 +261,7 @@ export default function StudentKHSDetail({ student, official, isCollapsed = fals
                               <SelectContent>
                                   <SelectItem value="none">Tanpa Tanda Tangan</SelectItem>
                                   <SelectItem value="basah">Tanda Tangan Basah</SelectItem>
-                                  <SelectItem value="digital">Tanda Tangan Digital (QR)</SelectItem>
+                                  <SelectItem value="digital">Tanda Tangan Digital</SelectItem>
                               </SelectContent>
                           </Select>
                       </div>

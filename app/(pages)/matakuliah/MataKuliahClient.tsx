@@ -8,12 +8,14 @@ import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { FormModal } from "@/components/shared/FormModal";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
@@ -38,8 +40,9 @@ export default function MataKuliahClient({ initialData, studyPrograms }: MataKul
 
   // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<"ALL" | CourseCategory>("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<CourseCategory | "ALL">("ALL");
   const [semesterFilter, setSemesterFilter] = useState<string>("ALL");
+  const [prodiFilter, setProdiFilter] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -66,10 +69,11 @@ export default function MataKuliahClient({ initialData, studyPrograms }: MataKul
         course.kode.toLowerCase().includes(searchQuery.toLowerCase());
       const matchCategory = categoryFilter === "ALL" || course.kategori === categoryFilter;
       const matchSemester = semesterFilter === "ALL" || course.smt_default.toString() === semesterFilter;
+      const matchProdi = prodiFilter === "ALL" || (course.study_programs && course.study_programs.some(sp => sp.nama === prodiFilter));
       
-      return matchSearch && matchCategory && matchSemester;
+      return matchSearch && matchCategory && matchSemester && matchProdi;
     });
-  }, [courses, searchQuery, categoryFilter, semesterFilter]);
+  }, [courses, searchQuery, categoryFilter, semesterFilter, prodiFilter]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredCourses.length / itemsPerPage) || 1;
@@ -231,21 +235,60 @@ export default function MataKuliahClient({ initialData, studyPrograms }: MataKul
     }
   ];
 
+  const activeFilterCount = [
+    categoryFilter !== "ALL",
+    semesterFilter !== "ALL",
+    prodiFilter !== "ALL"
+  ].filter(Boolean).length;
+
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Kategori</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v as any); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="Reguler">Reguler</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="MBKM">MBKM</DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuLabel>Semester</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <DropdownMenuRadioItem key={i} value={i.toString()}>Semester {i}</DropdownMenuRadioItem>)}
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Program Studi</Label>
+        <Select value={prodiFilter} onValueChange={(v) => { setProdiFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Program Studi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Program Studi</SelectItem>
+            {studyPrograms.map(p => (
+              <SelectItem key={p.id} value={p.nama}>{p.nama}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-slate-700">Kategori</Label>
+          <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v as any); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full h-9">
+              <SelectValue placeholder="Semua Kategori" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Kategori</SelectItem>
+              <SelectItem value="Reguler">Reguler</SelectItem>
+              <SelectItem value="MBKM">MBKM</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-slate-700">Semester</Label>
+          <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full h-9">
+              <SelectValue placeholder="Semua Semester" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Semester</SelectItem>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <SelectItem key={i} value={i.toString()}>Semester {i}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
   );
 
   return (
@@ -263,8 +306,9 @@ export default function MataKuliahClient({ initialData, studyPrograms }: MataKul
             searchPlaceholder="Cari Matkul..."
             onAdd={handleOpenAdd}
             filterContent={filterContent}
-            isFilterActive={categoryFilter !== "ALL" || semesterFilter !== "ALL"}
-            onResetFilter={() => { setCategoryFilter("ALL"); setSemesterFilter("ALL"); setSearchQuery(""); }}
+            isFilterActive={activeFilterCount > 0}
+            activeFilterCount={activeFilterCount}
+            onResetFilter={() => { setCategoryFilter("ALL"); setSemesterFilter("ALL"); setProdiFilter("ALL"); setSearchQuery(""); }}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}

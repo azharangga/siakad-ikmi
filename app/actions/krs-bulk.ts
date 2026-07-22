@@ -20,7 +20,7 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
     const { data: allStudents, error: studentError } = await supabase
       .from("students")
       .select(`
-        id, nim, nama, angkatan,
+        id, nim, nama, angkatan, status_mahasiswa,
         study_program:study_programs (nama, jenjang)
       `)
       .eq("is_active", true)
@@ -52,7 +52,7 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
     // 5. Tambahkan info semester & MBKM
     return studentsWithoutKRS.map(s => ({
       ...s,
-      semester: calculateStudentSemester(s.angkatan, academicYear),
+      semester: calculateStudentSemester(s.angkatan, academicYear, s.status_mahasiswa),
       is_mbkm: mbkmStudentIds.has(s.id)
     }));
 

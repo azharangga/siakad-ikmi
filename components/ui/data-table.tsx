@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -12,12 +12,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton"; 
-import { Search, Plus, Filter, ChevronLeft, ChevronRight, ListFilter } from "lucide-react";
+import { Search, Plus, Filter, ListFilter, ChevronLeft, ChevronRight, SlidersHorizontal, RotateCcw } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export interface Column<T> {
   header: string | (() => React.ReactNode); 
@@ -35,6 +39,7 @@ interface DataTableProps<T> {
   searchPlaceholder?: string;
   filterContent?: React.ReactNode;
   isFilterActive?: boolean;
+  activeFilterCount?: number;
   onResetFilter?: () => void;
   onAdd?: () => void;
   addLabel?: string;
@@ -58,6 +63,7 @@ export function DataTable<T>({
   searchPlaceholder = "Cari data...",
   filterContent,
   isFilterActive = false,
+  activeFilterCount,
   onResetFilter,
   onAdd,
   addLabel = "Tambah Data",
@@ -71,14 +77,15 @@ export function DataTable<T>({
   isSearchVisible = true,
   customActions,
 }: DataTableProps<T>) {
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
   
   return (
     <div className="space-y-4">
       {/* TOOLBAR */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
           {isSearchVisible && (
-            <div className="relative flex-1 sm:w-72">
+            <div className="relative flex-1 sm:w-72 min-w-[200px]">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                 placeholder={searchPlaceholder}
@@ -91,26 +98,69 @@ export function DataTable<T>({
           )}
 
           {filterContent && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+              <DialogTrigger asChild>
                 <Button 
                   variant="outline" 
-                  size="icon" 
                   disabled={isLoading}
-                  className={`shrink-0 transition-colors ${
+                  className={`shrink-0 gap-2 transition-colors ${
                     isFilterActive 
-                      ? "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700" 
-                      : "text-muted-foreground"
+                      ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 hover:text-primary font-medium" 
+                      : "text-slate-700 hover:bg-slate-50 border-slate-200"
                   }`}
                   title="Filter Data"
                 >
-                  {isFilterActive ? <ListFilter className="h-4 w-4" /> : <Filter className="h-4 w-4" />}
+                  {isFilterActive ? <ListFilter className="h-4 w-4 text-primary" /> : <Filter className="h-4 w-4" />}
+                  <span className="hidden sm:inline">Filter</span>
+                  {isFilterActive && (
+                    <span className="ml-0.5 px-1.5 py-0.2 text-[11px] font-semibold bg-primary text-white rounded-full leading-tight">
+                      {activeFilterCount && activeFilterCount > 0 ? activeFilterCount : "•"}
+                    </span>
+                  )}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                {filterContent}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[480px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+                    <Filter className="h-5 w-5 text-primary" />
+                    Filter Data
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-slate-500">
+                    Atur kriteria di bawah ini untuk menyaring tampilan data.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="py-3 space-y-4">
+                  {filterContent}
+                </div>
+
+                <DialogFooter className="flex items-center justify-between sm:justify-between pt-4 border-t gap-2">
+                  {onResetFilter ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        onResetFilter();
+                      }}
+                      disabled={!isFilterActive}
+                      className="text-slate-500 hover:text-slate-800 disabled:opacity-40"
+                    >
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                      Reset Filter
+                    </Button>
+                  ) : <div />}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setIsFilterDialogOpen(false)}
+                    className="bg-primary text-white hover:bg-primary/90"
+                  >
+                    Selesai
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
           {customActions && (
              <div className="flex items-center">

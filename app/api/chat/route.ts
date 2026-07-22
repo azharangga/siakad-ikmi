@@ -574,7 +574,7 @@ function buildTools(user: any): Record<string, any> {
       execute: async ({ nim }: { nim: string }) => {
         const { data: student, error: stdErr } = await supabase
           .from('students')
-          .select('id,nim,nama,angkatan,alamat,is_active,study_programs(nama,jenjang)')
+          .select('id,nim,nama,angkatan,alamat,status_mahasiswa,study_programs(nama,jenjang)')
           .eq('nim', nim)
           .single();
 
@@ -613,7 +613,7 @@ function buildTools(user: any): Record<string, any> {
           angkatan: student.angkatan,
           prodi: studyProgram?.nama,
           jenjang: studyProgram?.jenjang,
-          status: student.is_active ? 'Aktif' : 'Tidak Aktif',
+          status: student.status_mahasiswa || 'AKTIF',
           ipk: ipk,
           sks_lulus: sksLulus,
           total_matkul: grades?.length || 0,

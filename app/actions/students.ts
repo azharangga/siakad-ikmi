@@ -15,7 +15,7 @@ interface DBResponseStudent {
   alamat: string;
   angkatan: number;
   study_program_id: string | null;
-  is_active: boolean;
+  status_mahasiswa: string;
   jenis_kelamin: string | null;
   tempat_lahir: string | null;
   tanggal_lahir: string | null;
@@ -205,7 +205,7 @@ export async function getStudents(): Promise<StudentData[]> {
   const students = data as unknown as DBResponseStudent[];
 
   return students.map((s) => {
-    const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear);
+    const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear, s.status_mahasiswa);
     const userAvatar = avatarMap.get(s.id) || null;
 
     const totalSksApproved = (s.krs || []).reduce((acc, curr) => {
@@ -268,7 +268,7 @@ export async function getStudents(): Promise<StudentData[]> {
         semester: dynamicSemester,
         study_program_id: s.study_program_id,
         study_program: s.study_programs,
-        is_active: s.is_active ?? true,
+        status_mahasiswa: s.status_mahasiswa || 'AKTIF',
         avatar_url: userAvatar,
         jenis_kelamin: s.jenis_kelamin,
         tempat_lahir: s.tempat_lahir,
@@ -326,7 +326,7 @@ export async function getStudentById(id: string): Promise<StudentData | null> {
 
   const s = data as unknown as DBResponseStudent;
   const userAvatar = userData?.avatar_url || null;
-  const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear);
+  const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear, s.status_mahasiswa);
 
   const totalSksApproved = (s.krs || []).reduce((acc, curr) => {
     if (curr.status === "APPROVED") {
@@ -388,7 +388,7 @@ export async function getStudentById(id: string): Promise<StudentData | null> {
       semester: dynamicSemester,
       study_program_id: s.study_program_id,
       study_program: s.study_programs,
-      is_active: s.is_active ?? true,
+      status_mahasiswa: s.status_mahasiswa || 'AKTIF',
       avatar_url: userAvatar,
       jenis_kelamin: s.jenis_kelamin,
       tempat_lahir: s.tempat_lahir,
@@ -412,7 +412,7 @@ export async function createStudent(values: StudentFormValues) {
     angkatan: Number(values.angkatan),
     alamat: values.alamat,
     study_program_id: values.study_program_id || null,
-    is_active: values.is_active,
+    status_mahasiswa: values.status_mahasiswa || 'AKTIF',
     jenis_kelamin: values.jenis_kelamin,
     tempat_lahir: values.tempat_lahir,
     tanggal_lahir: values.tanggal_lahir,
@@ -437,7 +437,7 @@ export async function createBulkStudents(students: any[]) {
     angkatan: Number(s.angkatan),
     alamat: s.alamat,
     study_program_id: s.study_program_id || null,
-    is_active: s.is_active,
+    status_mahasiswa: s.status_mahasiswa || 'AKTIF',
     jenis_kelamin: s.jenis_kelamin,
     tempat_lahir: s.tempat_lahir,
     tanggal_lahir: s.tanggal_lahir,
@@ -462,7 +462,7 @@ export async function updateStudent(id: string, values: StudentFormValues) {
     angkatan: Number(values.angkatan),
     alamat: values.alamat,
     study_program_id: values.study_program_id || null,
-    is_active: values.is_active,
+    status_mahasiswa: values.status_mahasiswa || 'AKTIF',
     jenis_kelamin: values.jenis_kelamin,
     tempat_lahir: values.tempat_lahir,
     tanggal_lahir: values.tanggal_lahir,
@@ -528,7 +528,7 @@ export async function getStudentByNim(nim: string): Promise<StudentData | null> 
     .single();
 
   const userAvatar = userData?.avatar_url || null;
-  const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear);
+  const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear, s.status_mahasiswa);
 
   const totalSksApproved = (s.krs || []).reduce((acc, curr) => {
     if (curr.status === "APPROVED") {
@@ -590,7 +590,7 @@ export async function getStudentByNim(nim: string): Promise<StudentData | null> 
       semester: dynamicSemester,
       study_program_id: s.study_program_id,
       study_program: s.study_programs,
-      is_active: s.is_active ?? true,
+      status_mahasiswa: s.status_mahasiswa || 'AKTIF',
       avatar_url: userAvatar,
       jenis_kelamin: s.jenis_kelamin,
       tempat_lahir: s.tempat_lahir,
@@ -659,7 +659,7 @@ export async function getAllStudentsForKtm(): Promise<StudentData[]> {
   if (!data) return [];
 
   return data.map((s: any) => {
-    const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear);
+    const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear, s.status_mahasiswa);
     const userAvatar = avatarMap.get(s.id) || null;
 
     return {
@@ -673,7 +673,7 @@ export async function getAllStudentsForKtm(): Promise<StudentData[]> {
         semester: dynamicSemester,
         study_program_id: s.study_program_id,
         study_program: s.study_programs,
-        is_active: s.is_active ?? true,
+        status_mahasiswa: s.status_mahasiswa || 'AKTIF',
         avatar_url: userAvatar,
         jenis_kelamin: null,
         tempat_lahir: null,
@@ -727,7 +727,7 @@ export async function getAllStudentsForBiodata(): Promise<StudentData[]> {
   if (!data) return [];
 
   return data.map((s: any) => {
-    const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear);
+    const dynamicSemester = calculateStudentSemester(s.angkatan, activeYear, s.status_mahasiswa);
     const userAvatar = avatarMap.get(s.id) || null;
 
     return {
@@ -741,7 +741,7 @@ export async function getAllStudentsForBiodata(): Promise<StudentData[]> {
         semester: dynamicSemester,
         study_program_id: s.study_program_id,
         study_program: s.study_programs,
-        is_active: s.is_active ?? true,
+        status_mahasiswa: s.status_mahasiswa || 'AKTIF',
         avatar_url: userAvatar,
         jenis_kelamin: s.jenis_kelamin,
         tempat_lahir: s.tempat_lahir,

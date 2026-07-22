@@ -274,7 +274,7 @@ export function ImportMahasiswaDialog({
           study_program_id: prodi?.id || "",
           angkatan: d.angkatan,
           alamat: d.alamat,
-          is_active: true,
+          status_mahasiswa: "AKTIF",
           jenis_kelamin: d.jenis_kelamin,
           tempat_lahir: d.tempat_lahir,
           // Map "-" to null for database

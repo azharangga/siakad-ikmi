@@ -91,7 +91,7 @@ const PrintableBiodata = forwardRef<HTMLDivElement, PrintableBiodataProps>(
                     <tr>
                       <td>Semester Saat Ini</td>
                       <td className="text-center">:</td>
-                      <td>{student.profile.semester}</td>
+                      <td>{student.profile.status_mahasiswa === "LULUS" ? "LULUS" : student.profile.semester}</td>
                     </tr>
                     <tr>
                       <td>Angkatan</td>
@@ -102,7 +102,7 @@ const PrintableBiodata = forwardRef<HTMLDivElement, PrintableBiodataProps>(
                       <td>Status Akademik</td>
                       <td className="text-center">:</td>
                       <td>
-                        {student.profile.is_active ? "Aktif" : "Non-Aktif"}
+                        {student.profile.status_mahasiswa || "AKTIF"}
                       </td>
                     </tr>
                     <tr>

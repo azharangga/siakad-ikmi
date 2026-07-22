@@ -406,11 +406,21 @@ export default function StudentKRSView({
     {/* --- LAYOUT WEB --- */}
     <div className="flex flex-col gap-6 animate-in fade-in duration-500 mt-4 print:hidden">
       
+      {studentProfile?.status_mahasiswa === 'LULUS' && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-4 flex items-center gap-3 shadow-sm">
+          <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+          <div>
+            <p className="font-semibold text-sm">Selamat! Anda Telah Dinyatakan Lulus</p>
+            <p className="text-xs text-emerald-700 mt-0.5">Seluruh kegiatan akademik dan pengisian Kartu Rencana Studi (KRS) Anda telah dinyatakan selesai secara resmi.</p>
+          </div>
+        </div>
+      )}
+
       {/* 1. HEADER STATS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* CARD 1: STATUS KRS */}
         <Card className={`col-span-1 md:col-span-2 border-none shadow-md text-white overflow-hidden relative
-            ${krsGlobalStatus === 'APPROVED' ? 'bg-gradient-to-br from-emerald-600 to-teal-700' : 
+            ${studentProfile?.status_mahasiswa === 'LULUS' || krsGlobalStatus === 'APPROVED' ? 'bg-gradient-to-br from-emerald-600 to-teal-700' : 
               krsGlobalStatus === 'SUBMITTED' ? 'bg-gradient-to-br from-blue-800 to-blue-900' : 
               krsGlobalStatus === 'REJECTED' ? 'bg-gradient-to-br from-red-600 to-rose-700' : 
               'bg-gradient-to-br from-slate-700 to-slate-800' }`}>
@@ -440,7 +450,8 @@ export default function StudentKRSView({
                         <div>
                             <p className="text-white/80 font-medium text-sm mb-1">Status Pengisian KRS</p>
                             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                                {krsGlobalStatus === 'APPROVED' ? "KRS Disetujui" : 
+                                {studentProfile?.status_mahasiswa === 'LULUS' ? "Studi Selesai (LULUS)" :
+                                 krsGlobalStatus === 'APPROVED' ? "KRS Disetujui" : 
                                  krsGlobalStatus === 'SUBMITTED' ? "Menunggu Validasi" :
                                  krsGlobalStatus === 'REJECTED' ? "KRS Ditolak" :
                                  krsGlobalStatus === 'NOT_TAKEN' ? "Belum Mengisi" : "Belum Diajukan"}
@@ -619,7 +630,7 @@ export default function StudentKRSView({
                         <SelectContent>
                             <SelectItem value="none">Tanpa Tanda Tangan</SelectItem>
                             {official?.ttd_basah_url && <SelectItem value="basah">Tanda Tangan Basah</SelectItem>}
-                            {official?.ttd_digital_url && <SelectItem value="digital">Tanda Tangan Digital (QR)</SelectItem>}
+                            {official?.ttd_digital_url && <SelectItem value="digital">Tanda Tangan Digital</SelectItem>}
                         </SelectContent>
                     </Select>
                 </div>

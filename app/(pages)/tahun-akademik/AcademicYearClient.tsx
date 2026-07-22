@@ -14,12 +14,14 @@ import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { AcademicYearForm } from "@/components/features/academic-year/AcademicYearForm";
 import { AcademicYear, AcademicYearFormValues } from "@/lib/types";
 import { createAcademicYear, updateAcademicYear, deleteAcademicYear } from "@/app/actions/academic-years";
+import { Label } from "@/components/ui/label";
 import {
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface listProps {
   initialData: AcademicYear[];
@@ -35,7 +37,8 @@ export default function AcademicYearClient({ initialData }: listProps) {
 
   // Pagination, Search, & Filter
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL"); // [NEW] State untuk filter
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [semesterFilter, setSemesterFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -68,9 +71,11 @@ export default function AcademicYearClient({ initialData }: listProps) {
         matchStatus = item.is_active === false;
       }
 
-      return matchSearch && matchStatus;
+      const matchSemester = semesterFilter === "ALL" || item.semester === semesterFilter;
+
+      return matchSearch && matchStatus && matchSemester;
     });
-  }, [dataList, searchQuery, statusFilter]);
+  }, [dataList, searchQuery, statusFilter, semesterFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -199,23 +204,41 @@ export default function AcademicYearClient({ initialData }: listProps) {
     }
   ];
 
-  // === FILTER MENU CONTENT ===
+  const activeFilterCount = [
+    statusFilter !== "ALL",
+    semesterFilter !== "ALL"
+  ].filter(Boolean).length;
+
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Filter Status</DropdownMenuLabel>
-      <DropdownMenuSeparator />
-      <DropdownMenuRadioGroup 
-        value={statusFilter} 
-        onValueChange={(v) => { 
-          setStatusFilter(v); 
-          setCurrentPage(1); 
-        }}
-      >
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="active">Aktif</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="inactive">Non-Aktif</DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Status Tahun Akademik</Label>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Status</SelectItem>
+            <SelectItem value="active">Aktif</SelectItem>
+            <SelectItem value="inactive">Non-Aktif</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Semester</Label>
+        <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Semester" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Semester</SelectItem>
+            <SelectItem value="Ganjil">Ganjil</SelectItem>
+            <SelectItem value="Genap">Genap</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 
   return (
@@ -235,9 +258,11 @@ export default function AcademicYearClient({ initialData }: listProps) {
             
             // Props untuk Filter
             filterContent={filterContent}
-            isFilterActive={statusFilter !== "ALL"}
+            isFilterActive={activeFilterCount > 0}
+            activeFilterCount={activeFilterCount}
             onResetFilter={() => {
               setStatusFilter("ALL");
+              setSemesterFilter("ALL");
               setSearchQuery("");
               setCurrentPage(1);
             }}

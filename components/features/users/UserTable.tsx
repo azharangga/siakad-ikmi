@@ -8,6 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Pencil, Trash2, ShieldCheck, BookOpen, KeyRound, CheckCircle2, XCircle, User, AtSign, GraduationCap, User2, UserPlus, Crown } from "lucide-react"; 
 import { UserData } from "@/lib/types"; 
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -42,6 +50,7 @@ export default function UserTable({
   
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -62,8 +71,12 @@ export default function UserTable({
       result = result.filter((user) => user.role === roleFilter);
     }
 
+    if (statusFilter !== "ALL") {
+      result = result.filter((user) => statusFilter === "active" ? user.is_active : !user.is_active);
+    }
+
     return result;
-  }, [data, searchQuery, roleFilter]);
+  }, [data, searchQuery, roleFilter, statusFilter]);
 
   // === PAGINATION ===
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -203,25 +216,43 @@ export default function UserTable({
     },
   ];
 
-  // === FILTER DROPDOWN ===
+  const activeFilterCount = [
+    roleFilter !== "ALL",
+    statusFilter !== "ALL"
+  ].filter(Boolean).length;
+
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Filter Peran (Role)</DropdownMenuLabel>
-      <DropdownMenuSeparator />
-      <DropdownMenuRadioGroup 
-        value={roleFilter} 
-        onValueChange={(v) => { 
-          setRoleFilter(v); 
-          setCurrentPage(1); 
-        }}
-      >
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="admin">Admin</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="dosen">Dosen</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="mahasiswa">Mahasiswa</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="superuser">Superuser</DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Peran Pengguna</Label>
+        <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Peran" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Peran</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="dosen">Dosen</SelectItem>
+            <SelectItem value="mahasiswa">Mahasiswa</SelectItem>
+            <SelectItem value="superuser">Superuser</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Status Akun</Label>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Status</SelectItem>
+            <SelectItem value="active">Aktif</SelectItem>
+            <SelectItem value="inactive">Non Aktif</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 
   // === GENERATE BUTTON ===
@@ -254,9 +285,11 @@ export default function UserTable({
           addLabel="Tambah User"
           
           filterContent={filterContent}
-          isFilterActive={roleFilter !== "ALL"}
+          isFilterActive={activeFilterCount > 0}
+          activeFilterCount={activeFilterCount}
           onResetFilter={() => {
             setRoleFilter("ALL");
+            setStatusFilter("ALL");
             setSearchQuery("");
             setCurrentPage(1);
           }}

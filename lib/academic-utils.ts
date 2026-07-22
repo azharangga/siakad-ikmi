@@ -1,8 +1,9 @@
-
 export function calculateStudentSemester(
   angkatan: number | string | null | undefined,
-  activeYear: { nama: string; semester: string } | null
+  activeYear: { nama: string; semester: string } | null,
+  statusMahasiswa?: string
 ): number {
+  if (statusMahasiswa === 'LULUS') return 8;
   if (!angkatan || !activeYear) return 1;
 
   const angkatanNum = typeof angkatan === "string" ? parseInt(angkatan) : angkatan;
@@ -19,5 +20,6 @@ export function calculateStudentSemester(
     sem += 2;
   }
 
-  return sem > 0 ? sem : 1;
+  const resultSem = sem > 0 ? sem : 1;
+  return resultSem > 8 ? 8 : resultSem;
 }

@@ -121,7 +121,7 @@ export async function getStudentCourseOfferings(studentId: string, academicYearI
     if (yearError) throw new Error("Tahun akademik tidak ditemukan");
 
     // Hitung semester mahasiswa
-    const calculatedSemester = calculateStudentSemester(student.angkatan, academicYear);
+    const calculatedSemester = calculateStudentSemester(student.angkatan, academicYear, student.status_mahasiswa);
 
     // C. Cek Status MBKM Mahasiswa
     const { data: mbkmData } = await supabase
@@ -313,7 +313,7 @@ export async function getStudentsWithSubmittedKRS(academicYearId: string) {
 
     krsList.forEach((item: any) => {
       if (item.students && !studentMap.has(item.student_id)) {
-        const calculatedSemester = calculateStudentSemester(item.students.angkatan, academicYear);
+        const calculatedSemester = calculateStudentSemester(item.students.angkatan, academicYear, item.students.status_mahasiswa);
         studentMap.set(item.student_id, {
           ...item.students, status: item.status, semester: calculatedSemester
         });

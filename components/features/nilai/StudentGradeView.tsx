@@ -4,6 +4,14 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, BookOpen, Trophy, ScrollText } from "lucide-react";
 import { getStudentGradeSummary } from "@/app/actions/grades";
@@ -25,6 +33,7 @@ export default function StudentGradeView({ user, initialGrades, initialSummary }
   
   // State untuk DataTable
   const [searchQuery, setSearchQuery] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -50,13 +59,19 @@ export default function StudentGradeView({ user, initialGrades, initialSummary }
 
   // --- FILTER & PAGINATION LOGIC ---
   const filteredData = useMemo(() => {
-    if (!searchQuery) return data;
-    const lower = searchQuery.toLowerCase();
-    return data.filter(row => 
-        row.matkul.toLowerCase().includes(lower) || 
-        row.kode.toLowerCase().includes(lower)
-    );
-  }, [data, searchQuery]);
+    let res = data;
+    if (searchQuery) {
+      const lower = searchQuery.toLowerCase();
+      res = res.filter(row => 
+          row.matkul.toLowerCase().includes(lower) || 
+          row.kode.toLowerCase().includes(lower)
+      );
+    }
+    if (gradeFilter !== "ALL") {
+      res = res.filter(row => row.huruf === gradeFilter);
+    }
+    return res;
+  }, [data, searchQuery, gradeFilter]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -117,6 +132,29 @@ export default function StudentGradeView({ user, initialGrades, initialSummary }
         render: (row) => <span className="font-semibold text-slate-600 text-sm">{row.nm}</span>
     }
   ];
+
+  const activeFilterCount = gradeFilter !== "ALL" ? 1 : 0;
+
+  const filterContent = (
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Huruf Mutu Nilai</Label>
+        <Select value={gradeFilter} onValueChange={(v) => { setGradeFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Nilai" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Nilai</SelectItem>
+            <SelectItem value="A">Nilai A</SelectItem>
+            <SelectItem value="B">Nilai B</SelectItem>
+            <SelectItem value="C">Nilai C</SelectItem>
+            <SelectItem value="D">Nilai D</SelectItem>
+            <SelectItem value="E">Nilai E</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500 mt-4">
@@ -225,6 +263,10 @@ export default function StudentGradeView({ user, initialGrades, initialSummary }
                 searchQuery={searchQuery}
                 onSearchChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 searchPlaceholder="Cari Mata Kuliah atau Kode..."
+                filterContent={filterContent}
+                isFilterActive={activeFilterCount > 0}
+                activeFilterCount={activeFilterCount}
+                onResetFilter={() => { setGradeFilter("ALL"); setSearchQuery(""); }}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}

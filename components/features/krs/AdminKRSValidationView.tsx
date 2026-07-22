@@ -4,11 +4,18 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useToastMessage } from "@/hooks/use-toast-message";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { 
-  CheckCircle2, Eye, XCircle, GraduationCap, CalendarDays, AlertCircle, ListTodo, BookOpen, Users, Lock, ChevronRight, FileText, LayoutDashboard
+  CheckCircle2, Eye, XCircle, GraduationCap, CalendarDays, AlertCircle, ListTodo, BookOpen, Users, Lock, ChevronRight, FileText, LayoutDashboard, Check, ChevronsUpDown, Pencil, Trash2, Plus
 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import BulkKRSInputModal from "./BulkKRSInputModal"; // Import Modal
@@ -59,8 +66,9 @@ export default function AdminKRSValidationView({
     });
   }, [academicYears]);
 
-  // State untuk DataTable
+  // State untuk DataTable & Filter
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -95,16 +103,21 @@ export default function AdminKRSValidationView({
     finally { setIsLoading(false); }
   };
 
-  // Logic Filtering & Pagination
   const filteredData = useMemo(() => {
-    if (!searchQuery) return students;
-    const lower = searchQuery.toLowerCase();
-    return students.filter(s => 
+    let res = students;
+    if (searchQuery) {
+      const lower = searchQuery.toLowerCase();
+      res = res.filter(s => 
         s.nama.toLowerCase().includes(lower) || 
         s.nim.toLowerCase().includes(lower) ||
         s.study_program?.nama?.toLowerCase().includes(lower)
-    );
-  }, [students, searchQuery]);
+      );
+    }
+    if (statusFilter !== "ALL") {
+      res = res.filter(s => s.status === statusFilter);
+    }
+    return res;
+  }, [students, searchQuery, statusFilter]);
 
   const pendingCount = useMemo(() => {
     return students.filter(s => s.status === 'SUBMITTED').length;
@@ -337,27 +350,53 @@ export default function AdminKRSValidationView({
       </div>
 
       {/* --- Section Table --- */}
-      <Card id="krs-table" className="border-none shadow-sm ring-1 ring-gray-200 bg-white">
-        <CardContent className="p-4 sm:p-6">
-            <DataTable
-                data={currentData}
-                columns={columns}
-                isLoading={isLoading}
-                searchQuery={searchQuery}
-                onSearchChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                searchPlaceholder="Cari Nama, NIM, atau Prodi..."
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                startIndex={startIndex}
-                endIndex={endIndex}
-                totalItems={filteredData.length}
-                onAdd={pendingCount > 0 ? () => setIsApproveAllOpen(true) : undefined}
-                addLabel={`Setujui Semua`}
-                addIcon={<CheckCircle2 className="w-4 h-4 mr-2" />}
-            />
-        </CardContent>
-      </Card>
+      {(() => {
+        const activeFilterCount = statusFilter !== "ALL" ? 1 : 0;
+        const filterContent = (
+          <div className="space-y-4 text-left">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Status Persetujuan KRS</Label>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+                <SelectTrigger className="w-full h-9">
+                  <SelectValue placeholder="Semua Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Semua Status</SelectItem>
+                  <SelectItem value="SUBMITTED">Menunggu Persetujuan</SelectItem>
+                  <SelectItem value="APPROVED">Disetujui</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+        return (
+          <Card id="krs-table" className="border-none shadow-sm ring-1 ring-gray-200 bg-white">
+            <CardContent className="p-4 sm:p-6">
+                <DataTable
+                    data={currentData}
+                    columns={columns}
+                    isLoading={isLoading}
+                    searchQuery={searchQuery}
+                    onSearchChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    startIndex={startIndex}
+                    endIndex={endIndex}
+                    totalItems={filteredData.length}
+                    filterContent={filterContent}
+                    isFilterActive={activeFilterCount > 0}
+                    activeFilterCount={activeFilterCount}
+                    onResetFilter={() => { setStatusFilter("ALL"); setSearchQuery(""); }}
+                    onAdd={pendingCount > 0 ? () => setIsApproveAllOpen(true) : undefined}
+                    addLabel={`Setujui Semua`}
+                    addIcon={<CheckCircle2 className="w-4 h-4 mr-2" />}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                />
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* --- Detail Modal Redesigned --- */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>

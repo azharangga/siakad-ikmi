@@ -6,12 +6,14 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { PencilLine } from "lucide-react";
 import { StudentData, StudyProgram } from "@/lib/types";
+import { Label } from "@/components/ui/label";
 import {
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Image from "next/image";
 import { User } from "lucide-react";
 
@@ -155,27 +157,23 @@ export function StudentTable({
     }
   ];
 
-  // === KONTEN FILTER DROPDOWN ===
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Filter Program Studi</DropdownMenuLabel>
-      <DropdownMenuSeparator />
-      <DropdownMenuRadioGroup 
-        value={filterProdi} 
-        onValueChange={(v) => {
-             setFilterProdi(v);
-             setCurrentPage(1);
-        }}
-      >
-        <DropdownMenuRadioItem value="ALL">Semua Prodi</DropdownMenuRadioItem>
-        {/* Render dinamis dari props studyPrograms */}
-        {studyPrograms.map((p) => (
-            <DropdownMenuRadioItem key={p.id} value={p.nama}>
-                {p.nama}
-            </DropdownMenuRadioItem>
-        ))}
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Program Studi</Label>
+        <Select value={filterProdi} onValueChange={(v) => { setFilterProdi(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Program Studi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Program Studi</SelectItem>
+            {studyPrograms.map((p) => (
+              <SelectItem key={p.id} value={p.nama}>{p.nama}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 
   return (
@@ -200,6 +198,7 @@ export function StudentTable({
       
       filterContent={filterContent}
       isFilterActive={filterProdi !== "ALL"}
+      activeFilterCount={filterProdi !== "ALL" ? 1 : 0}
       onResetFilter={() => {
         setFilterProdi("ALL");
         setSearchQuery("");

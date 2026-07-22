@@ -12,7 +12,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Printer, Loader2, GraduationCap, Users, Lock, FileText, CheckCircle2, Download, AlertTriangle } from "lucide-react";
+import { Printer, Loader2, GraduationCap, Users, Lock, FileText, CheckCircle2, Download, AlertTriangle, PenTool } from "lucide-react";
 
 import { getOfficialForDocument } from "@/app/actions/students";
 import { StudentData, StudyProgram, Official, SidangSkripsi, PredikatYudisium } from "@/lib/types";
@@ -380,31 +380,28 @@ export default function AdminSKLView({
                 </div>
               )}
 
-              {/* Nomor Surat (READONLY & DINAMIS OTOMATIS PER MAHASISWA) */}
+              {/* Nomor Surat */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-primary" /> Nomor Surat (Otomatis & Unik)
-                  </Label>
-                  <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-md border border-primary/20">
-                    Format Resmi BAAK
-                  </span>
-                </div>
+                <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-primary" /> Nomor Surat
+                </Label>
                 <Input
                   value={nomorSurat}
                   readOnly
                   disabled
-                  className="h-10 font-mono text-xs font-bold bg-muted/60 border-primary/30 text-foreground cursor-not-allowed select-all"
+                  className="h-10 font-mono text-xs font-bold bg-slate-50 border-slate-200 text-slate-700 cursor-not-allowed select-all w-full"
                 />
               </div>
 
               {/* Tanda Tangan */}
               {hasAnySignature && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-muted-foreground">Opsi Tanda Tangan Dokumen</Label>
+                  <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <PenTool className="w-3.5 h-3.5 text-primary" /> Opsi Tanda Tangan
+                  </Label>
                   <Select value={signatureType} onValueChange={(v) => setSignatureType(v as "basah" | "digital" | "none")}>
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue />
+                    <SelectTrigger className="w-full h-10 text-xs font-medium border-slate-200">
+                      <SelectValue placeholder="Pilih Opsi Tanda Tangan" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Tanpa tanda tangan</SelectItem>
@@ -412,7 +409,7 @@ export default function AdminSKLView({
                         <SelectItem value="basah">Tanda tangan basah</SelectItem>
                       )}
                       {(officialKaprodi?.ttd_digital_url || officialKetua?.ttd_digital_url) && (
-                        <SelectItem value="digital">Tanda tangan digital (QR Verification)</SelectItem>
+                        <SelectItem value="digital">Tanda tangan digital</SelectItem>
                       )}
                     </SelectContent>
                   </Select>

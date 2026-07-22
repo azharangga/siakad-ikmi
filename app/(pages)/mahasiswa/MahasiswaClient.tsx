@@ -11,6 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +62,8 @@ export default function MahasiswaClient({ initialStudents, initialPrograms }: Ma
   const [searchQuery, setSearchQuery] = useState("");
   const [prodiFilter, setProdiFilter] = useState<string>("ALL");
   const [semesterFilter, setSemesterFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [angkatanFilter, setAngkatanFilter] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -86,10 +96,12 @@ export default function MahasiswaClient({ initialStudents, initialPrograms }: Ma
       
       const matchProdi = prodiFilter === "ALL" || student.profile.study_program?.nama === prodiFilter;
       const matchSemester = semesterFilter === "ALL" || String(student.profile.semester) === semesterFilter;
+      const matchStatus = statusFilter === "ALL" || (student.profile.status_mahasiswa || "AKTIF") === statusFilter;
+      const matchAngkatan = angkatanFilter === "ALL" || String(student.profile.angkatan) === angkatanFilter;
       
-      return matchSearch && matchProdi && matchSemester;
+      return matchSearch && matchProdi && matchSemester && matchStatus && matchAngkatan;
     });
-  }, [dataList, searchQuery, prodiFilter, semesterFilter]);
+  }, [dataList, searchQuery, prodiFilter, semesterFilter, statusFilter, angkatanFilter]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -113,7 +125,7 @@ export default function MahasiswaClient({ initialStudents, initialPrograms }: Ma
       study_program_id: student.profile.study_program_id ? String(student.profile.study_program_id) : "",
       angkatan: student.profile.angkatan, 
       alamat: student.profile.alamat,
-      is_active: student.profile.is_active,
+      status_mahasiswa: student.profile.status_mahasiswa || "AKTIF",
       avatar_url: student.profile.avatar_url,
       jenis_kelamin: student.profile.jenis_kelamin || "",
       tempat_lahir: student.profile.tempat_lahir || "",
@@ -214,7 +226,7 @@ export default function MahasiswaClient({ initialStudents, initialPrograms }: Ma
       "Program Studi": student.profile.study_program?.nama || "-",
       "Angkatan": student.profile.angkatan,
       "Semester": student.profile.semester,
-      "Status": student.profile.is_active ? "Aktif" : "Non-Aktif",
+      "Status": student.profile.status_mahasiswa || "AKTIF",
       "No HP": student.profile.no_hp || "-",
       "Email": student.profile.email || "-",
       "Alamat": student.profile.alamat || "-"
@@ -339,15 +351,14 @@ export default function MahasiswaClient({ initialStudents, initialPrograms }: Ma
         className: "text-center w-[120px]",
         render: (row) => (
           <Badge 
-            variant={row.profile.is_active ? "default" : "destructive"} 
-            className={`font-normal ${row.profile.is_active ? "bg-green-600" : ""}`}
+            className={`font-normal ${
+              row.profile.status_mahasiswa === "AKTIF" ? "bg-green-600 hover:bg-green-700 text-white" :
+              row.profile.status_mahasiswa === "LULUS" ? "bg-blue-600 hover:bg-blue-700 text-white" :
+              row.profile.status_mahasiswa === "CUTI" ? "bg-amber-500 hover:bg-amber-600 text-white" :
+              "bg-red-600 hover:bg-red-700 text-white"
+            }`}
           >
-            {row.profile.is_active ? (
-              <CheckCircle2 className="mr-1 h-3 w-3" />
-            ) : (
-              <XCircle className="mr-1 h-3 w-3" />
-            )}
-            {row.profile.is_active ? "Aktif" : "Non-Aktif"}
+            {row.profile.status_mahasiswa || "AKTIF"}
           </Badge>
         )
     },
@@ -394,22 +405,81 @@ export default function MahasiswaClient({ initialStudents, initialPrograms }: Ma
     }
   ];
 
+  const activeFilterCount = [
+    prodiFilter !== "ALL",
+    semesterFilter !== "ALL",
+    statusFilter !== "ALL",
+    angkatanFilter !== "ALL"
+  ].filter(Boolean).length;
+
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Program Studi</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={prodiFilter} onValueChange={(v) => { setProdiFilter(v); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        {studyPrograms.map(p => (
-           <DropdownMenuRadioItem key={p.id} value={p.nama}>{p.nama}</DropdownMenuRadioItem>
-        ))}
-      </DropdownMenuRadioGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuLabel>Semester</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <DropdownMenuRadioItem key={i} value={i.toString()}>Semester {i}</DropdownMenuRadioItem>)}
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Program Studi</Label>
+        <Select value={prodiFilter} onValueChange={(v) => { setProdiFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Program Studi" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Program Studi</SelectItem>
+            {studyPrograms.map(p => (
+              <SelectItem key={p.id} value={p.nama}>{p.nama}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-slate-700">Status Mahasiswa</Label>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full h-9">
+              <SelectValue placeholder="Semua Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Status</SelectItem>
+              <SelectItem value="AKTIF">Aktif</SelectItem>
+              <SelectItem value="CUTI">Cuti</SelectItem>
+              <SelectItem value="NON_AKTIF">Non Aktif</SelectItem>
+              <SelectItem value="LULUS">Lulus</SelectItem>
+              <SelectItem value="DROP_OUT">Drop Out</SelectItem>
+              <SelectItem value="MENGUNDURKAN_DIRI">Mengundurkan Diri</SelectItem>
+              <SelectItem value="MUTASI">Mutasi</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-slate-700">Angkatan</Label>
+          <Select value={angkatanFilter} onValueChange={(v) => { setAngkatanFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full h-9">
+              <SelectValue placeholder="Semua Angkatan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Semua Angkatan</SelectItem>
+              {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map(y => (
+                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Semester Saat Ini</Label>
+        <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Semester" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Semester</SelectItem>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+              <SelectItem key={i} value={i.toString()}>Semester {i}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 
   return (
@@ -487,8 +557,9 @@ export default function MahasiswaClient({ initialStudents, initialPrograms }: Ma
                 </div>
             }
             filterContent={filterContent}
-            isFilterActive={prodiFilter !== "ALL" || semesterFilter !== "ALL"}
-            onResetFilter={() => { setProdiFilter("ALL"); setSemesterFilter("ALL"); setSearchQuery(""); }}
+            isFilterActive={activeFilterCount > 0}
+            activeFilterCount={activeFilterCount}
+            onResetFilter={() => { setProdiFilter("ALL"); setSemesterFilter("ALL"); setStatusFilter("ALL"); setAngkatanFilter("ALL"); setSearchQuery(""); }}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}

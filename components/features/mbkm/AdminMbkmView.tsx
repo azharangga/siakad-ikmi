@@ -9,12 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { FormModal } from "@/components/shared/FormModal";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { Label } from "@/components/ui/label";
 import {
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { MbkmForm } from "@/components/features/mbkm/MbkmForm";
 import { getMbkmStudents, createMbkmStudent, updateMbkmStudent, deleteMbkmStudent } from "@/app/actions/mbkm";
@@ -225,30 +227,46 @@ export default function AdminMbkmView({ initialData, initialStudents, initialAca
     }
   ];
 
-  // --- FILTER DROPDOWN CONTENT ---
+  const activeFilterCount = [
+    periodeFilter !== "ALL",
+    jenisFilter !== "ALL"
+  ].filter(Boolean).length;
+
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Periode Akademik</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={periodeFilter} onValueChange={(v) => { setPeriodeFilter(v); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        {academicYears.map((ay) => (
-           <DropdownMenuRadioItem key={ay.id} value={ay.nama}>{ay.nama}</DropdownMenuRadioItem>
-        ))}
-      </DropdownMenuRadioGroup>
-      
-      <DropdownMenuSeparator />
-      
-      <DropdownMenuLabel>Jenis MBKM</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={jenisFilter} onValueChange={(v) => { setJenisFilter(v); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        {[
-          "Magang Bersertifikat", "Studi Independen", "Kampus Mengajar", 
-          "Pertukaran Mahasiswa", "Wirausaha Merdeka", "Penelitian", "KKN Tematik"
-        ].map((j) => (
-            <DropdownMenuRadioItem key={j} value={j}>{j}</DropdownMenuRadioItem>
-        ))}
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Periode Akademik</Label>
+        <Select value={periodeFilter} onValueChange={(v) => { setPeriodeFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Periode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Periode</SelectItem>
+            {academicYears.map((ay) => (
+              <SelectItem key={ay.id} value={ay.nama}>{ay.nama}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Jenis Program MBKM</Label>
+        <Select value={jenisFilter} onValueChange={(v) => { setJenisFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Jenis MBKM" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Jenis MBKM</SelectItem>
+            {[
+              "Magang Bersertifikat", "Studi Independen", "Kampus Mengajar", 
+              "Pertukaran Mahasiswa", "Wirausaha Merdeka", "Penelitian", "KKN Tematik"
+            ].map((j) => (
+              <SelectItem key={j} value={j}>{j}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 
   return (
@@ -265,7 +283,8 @@ export default function AdminMbkmView({ initialData, initialStudents, initialAca
             onAdd={handleOpenAdd}
             addLabel="Tambah MBKM"
             filterContent={filterContent}
-            isFilterActive={jenisFilter !== "ALL" || periodeFilter !== "ALL"}
+            isFilterActive={activeFilterCount > 0}
+            activeFilterCount={activeFilterCount}
             onResetFilter={() => { setJenisFilter("ALL"); setPeriodeFilter("ALL"); setSearchQuery(""); }}
             currentPage={currentPage}
             totalPages={totalPages}

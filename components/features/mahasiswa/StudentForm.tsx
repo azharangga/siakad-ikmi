@@ -29,7 +29,7 @@ const defaultValues: StudentFormValues = {
   study_program_id: "", 
   angkatan: new Date().getFullYear(), // Default tahun sekarang
   alamat: "", 
-  is_active: true,
+  status_mahasiswa: "AKTIF",
   avatar_url: null,
   jenis_kelamin: "",
   tempat_lahir: "",
@@ -51,7 +51,7 @@ export function StudentForm({ initialData, studyPrograms, isEditing, onSubmit, o
       study_program_id: data.study_program_id ? String(data.study_program_id) : "",
       angkatan: data.angkatan ? String(data.angkatan) : new Date().getFullYear().toString(),
       alamat: data.alamat || "",
-      is_active: data.is_active ?? true,
+      status_mahasiswa: data.status_mahasiswa || "AKTIF",
       avatar_url: data.avatar_url || null,
       jenis_kelamin: data.jenis_kelamin || "",
       tempat_lahir: data.tempat_lahir || "",
@@ -213,24 +213,27 @@ export function StudentForm({ initialData, studyPrograms, isEditing, onSubmit, o
             </div>
             </div>
 
-            {/* Status (Edit Only) */}
-            {isEditing && (
-            <div className="grid gap-2 col-span-12 md:col-span-3">
-                <Label htmlFor="status_mhs">Status <span className="text-red-500">*</span></Label>
+            {/* Status Mahasiswa */}
+            <div className={`grid gap-2 col-span-12 ${isEditing ? "md:col-span-3" : "md:col-span-4"}`}>
+                <Label htmlFor="status_mahasiswa">Status Mahasiswa <span className="text-red-500">*</span></Label>
                 <Select 
-                    value={formData.is_active ? "active" : "inactive"}
-                    onValueChange={(val) => setFormData(prev => ({ ...prev, is_active: val === "active" }))}
+                    value={formData.status_mahasiswa || "AKTIF"}
+                    onValueChange={(val) => setFormData(prev => ({ ...prev, status_mahasiswa: val }))}
                 >
                     <SelectTrigger className="w-full">
-                        <SelectValue />
+                        <SelectValue placeholder="Pilih Status" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="active">Aktif</SelectItem>
-                        <SelectItem value="inactive">Non-Aktif</SelectItem>
+                        <SelectItem value="AKTIF">Aktif</SelectItem>
+                        <SelectItem value="CUTI">Cuti Akademik</SelectItem>
+                        <SelectItem value="NON_AKTIF">Non-Aktif</SelectItem>
+                        <SelectItem value="LULUS">Lulus</SelectItem>
+                        <SelectItem value="DROP_OUT">Drop Out (DO)</SelectItem>
+                        <SelectItem value="MENGUNDURKAN_DIRI">Mengundurkan Diri</SelectItem>
+                        <SelectItem value="MUTASI">Mutasi / Pindah Kampus</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
-            )}
 
             {/* Angkatan */}
             <div className={`grid gap-2 col-span-12 ${isEditing ? "md:col-span-3" : "md:col-span-4"}`}>

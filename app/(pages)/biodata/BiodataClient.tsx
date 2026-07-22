@@ -299,22 +299,21 @@ export default function BiodataClient({ student, students }: BiodataClientProps)
                             {student.profile.semester}
                         </span>
                    </div>
-                   <div className="flex flex-col sm:flex-row sm:items-center border-b border-gray-100 py-3 gap-1 sm:gap-4">
-                        <span className="text-gray-500 font-medium w-[140px] shrink-0">Status Akademik</span>
-                        <span>
-                          <Badge 
-                            variant={student.profile.is_active ? "default" : "destructive"} 
-                            className={`font-normal ${student.profile.is_active ? "bg-green-600 hover:bg-green-700" : ""}`}
-                          >
-                            {student.profile.is_active ? (
-                              <CheckCircle2 className="mr-1 h-3 w-3" />
-                            ) : (
-                              <XCircle className="mr-1 h-3 w-3" />
-                            )}
-                            {student.profile.is_active ? "Aktif" : "Non-Aktif"}
-                          </Badge>
-                        </span>
-                   </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center border-b border-gray-100 py-3 gap-1 sm:gap-4">
+                         <span className="text-gray-500 font-medium w-[140px] shrink-0">Status Akademik</span>
+                         <span>
+                           <Badge 
+                             className={`font-normal ${
+                               student.profile.status_mahasiswa === "AKTIF" ? "bg-green-600 hover:bg-green-700 text-white" :
+                               student.profile.status_mahasiswa === "LULUS" ? "bg-blue-600 hover:bg-blue-700 text-white" :
+                               student.profile.status_mahasiswa === "CUTI" ? "bg-amber-500 hover:bg-amber-600 text-white" :
+                               "bg-red-600 hover:bg-red-700 text-white"
+                             }`}
+                           >
+                             {student.profile.status_mahasiswa || "AKTIF"}
+                           </Badge>
+                         </span>
+                    </div>
 
                    {/* DATA PRIBADI */}
                    <div className="flex flex-col sm:flex-row sm:items-baseline border-b border-gray-100 py-3 gap-1 sm:gap-4">

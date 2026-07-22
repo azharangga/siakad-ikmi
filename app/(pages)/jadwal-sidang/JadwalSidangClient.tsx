@@ -13,6 +13,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -56,21 +63,28 @@ export default function JadwalSidangClient({ user, sidangList: initialList, allS
   const [studentOpen, setStudentOpen] = useState(false);
   const [hariOpen, setHariOpen] = useState(false);
 
-  // Pagination & search state
+  // Pagination, search, & filter state
   const [searchQuery, setSearchQuery] = useState("");
+  const [hariFilter, setHariFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const filteredData = useMemo(() => {
-    if (!searchQuery) return data;
-    const q = searchQuery.toLowerCase();
-    return data.filter(
-      (s) =>
-        s.student?.nama?.toLowerCase().includes(q) ||
-        s.student?.nim?.toLowerCase().includes(q) ||
-        s.hari_sidang?.toLowerCase().includes(q)
-    );
-  }, [data, searchQuery]);
+    let res = data;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      res = res.filter(
+        (s) =>
+          s.student?.nama?.toLowerCase().includes(q) ||
+          s.student?.nim?.toLowerCase().includes(q) ||
+          s.hari_sidang?.toLowerCase().includes(q)
+      );
+    }
+    if (hariFilter !== "ALL") {
+      res = res.filter((s) => s.hari_sidang === hariFilter);
+    }
+    return res;
+  }, [data, searchQuery, hariFilter]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -210,6 +224,27 @@ export default function JadwalSidangClient({ user, sidangList: initialList, allS
     },
   ];
 
+  const activeFilterCount = hariFilter !== "ALL" ? 1 : 0;
+
+  const filterContent = (
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Hari Sidang</Label>
+        <Select value={hariFilter} onValueChange={(v) => { setHariFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Hari" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Hari</SelectItem>
+            {HARI_OPTIONS.map((h) => (
+              <SelectItem key={h} value={h}>{h}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6 w-full">
       <PageHeader title="Jadwal Sidang Skripsi" breadcrumb={["Beranda", "Jadwal Sidang Skripsi"]} />
@@ -226,6 +261,10 @@ export default function JadwalSidangClient({ user, sidangList: initialList, allS
             onAdd={openAdd}
             addLabel="Tambah Jadwal"
             addIcon={<Plus className="mr-2 h-4 w-4" />}
+            filterContent={filterContent}
+            isFilterActive={activeFilterCount > 0}
+            activeFilterCount={activeFilterCount}
+            onResetFilter={() => { setHariFilter("ALL"); setSearchQuery(""); }}
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}

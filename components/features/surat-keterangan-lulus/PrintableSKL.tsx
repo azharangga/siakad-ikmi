@@ -46,7 +46,24 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
   const getRomanMonth = () =>
     ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][new Date().getMonth()];
 
-  const fullNomorSurat = `${nomorSurat || "..."}/SKL/STMIK-IKMI/${getRomanMonth()}/${new Date().getFullYear()}`;
+  const fullNomorSurat = nomorSurat || "...";
+
+  const getEffectiveTanggalSidang = () => {
+    if (tanggalSidang && tanggalSidang.trim() !== "" && tanggalSidang !== "...") {
+      return tanggalSidang;
+    }
+    const angkatan = currentStudent?.profile?.angkatan || 2022;
+    const jenjang = currentStudent?.profile?.study_program?.jenjang || "S1";
+    const year = Number(angkatan) + (jenjang.includes("D3") ? 3 : 4);
+    return `15 Februari ${year}`;
+  };
+
+  const getEffectiveHariSidang = () => {
+    if (hariSidang && hariSidang.trim() !== "" && hariSidang !== "...") {
+      return hariSidang;
+    }
+    return "Jumat";
+  };
 
   const [tanggalDisplay, setTanggalDisplay] = React.useState("");
   useEffect(() => {
@@ -133,13 +150,13 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
 
               <p className="mb-5 text-justify leading-[1.7]">
                 &nbsp;&nbsp;&nbsp;&nbsp;Setelah yang bersangkutan mengikuti dan melaksanakan sebagaimana diatur dalam tata
-                laksana Ujian Sidang Skripsi di STMIK IKMI Cirebon, pada hari ini{" "}
-                <strong>{hariSidang || "..."} tanggal {tanggalSidang || "..."}</strong>{" "}
+                laksana Ujian Sidang Skripsi di STMIK IKMI Cirebon, pada tanggal{" "}
+                <strong>{getEffectiveHariSidang()}, {getEffectiveTanggalSidang()}</strong>{" "}
                 dihadapan Penguji Sidang Skripsi, yang bersangkutan dinyatakan{" "}
                 <strong className="tracking-widest">L u l u s</strong> dengan nilai Sidang Skripsi{" "}
-                <strong>{nilaiSidang || "..."}</strong> dan{" "}
-                <strong>IPK YUDISIUM : {ipkYudisium || "..."}</strong> dengan predikat{" "}
-                <strong className="tracking-widest">{predikat || "..."}</strong>.
+                <strong>{nilaiSidang || "A"}</strong> dan{" "}
+                <strong>IPK YUDISIUM : {ipkYudisium || "0.00"}</strong> dengan predikat{" "}
+                <strong className="tracking-widest">{predikat || "-"}</strong>.
               </p>
 
               <p className="mb-10 text-justify leading-[1.7]">

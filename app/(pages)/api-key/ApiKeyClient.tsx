@@ -9,7 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DataTable, type Column } from '@/components/ui/data-table';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -49,8 +56,9 @@ export default function ApiKeyClient() {
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
   
   // Filter & Pagination
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [modelFilter, setModelFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -101,16 +109,22 @@ export default function ApiKeyClient() {
   };
 
   const filteredData = useMemo(() => {
-    return dataList.filter((item) => {
-      const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchStatus =
-        statusFilter === 'ALL' ||
-        (statusFilter === 'ACTIVE' && item.is_active) ||
-        (statusFilter === 'INACTIVE' && !item.is_active) ||
-        (statusFilter === 'LIMITED' && item.is_limited);
-      return matchSearch && matchStatus;
-    });
-  }, [dataList, searchQuery, statusFilter]);
+    let result = dataList.filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    if (statusFilter === 'ACTIVE') {
+      result = result.filter(k => k.is_active && !k.is_limited);
+    } else if (statusFilter === 'INACTIVE') {
+      result = result.filter(k => !k.is_active);
+    } else if (statusFilter === 'LIMITED') {
+      result = result.filter(k => k.is_limited);
+    }
+
+    if (modelFilter !== 'ALL') {
+      result = result.filter(k => k.model === modelFilter);
+    }
+
+    return result;
+  }, [dataList, searchQuery, statusFilter, modelFilter]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -241,17 +255,43 @@ export default function ApiKeyClient() {
 
   const isUsingDefault = dataList.filter(k => k.id !== 'env-default').length === 0 || !dataList.some(k => k.id !== 'env-default' && k.is_active);
 
+  const activeFilterCount = [
+    statusFilter !== 'ALL',
+    modelFilter !== 'ALL'
+  ].filter(Boolean).length;
+
   const filterContent = (
-    <>
-      <DropdownMenuLabel>Status Key</DropdownMenuLabel>
-      <DropdownMenuRadioGroup value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
-        <DropdownMenuRadioItem value="ALL">Semua</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="ACTIVE">Aktif</DropdownMenuRadioItem>
-        <DropdownMenuRadioItem value="INACTIVE">Non-Aktif</DropdownMenuRadioItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioItem value="LIMITED">Limit</DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
-    </>
+    <div className="space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Status API Key</Label>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Status</SelectItem>
+            <SelectItem value="ACTIVE">Aktif</SelectItem>
+            <SelectItem value="INACTIVE">Non Aktif</SelectItem>
+            <SelectItem value="LIMITED">Terbatas Kuota</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-slate-700">Model AI</Label>
+        <Select value={modelFilter} onValueChange={(v) => { setModelFilter(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full h-9">
+            <SelectValue placeholder="Semua Model" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Semua Model</SelectItem>
+            <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash</SelectItem>
+            <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
+            <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 
   const columns: Column<ApiKey>[] = [
@@ -423,8 +463,9 @@ export default function ApiKeyClient() {
             onSearchChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             searchPlaceholder="Cari Nama API Key..."
             filterContent={filterContent}
-            isFilterActive={statusFilter !== 'ALL'}
-            onResetFilter={() => { setStatusFilter('ALL'); setSearchQuery(''); }}
+            isFilterActive={activeFilterCount > 0}
+            activeFilterCount={activeFilterCount}
+            onResetFilter={() => { setStatusFilter('ALL'); setModelFilter('ALL'); setSearchQuery(''); }}
             onAdd={openAddModal}
             addLabel="Tambah API Key"
             addIcon={<Plus className="h-4 w-4 mr-2" />}
