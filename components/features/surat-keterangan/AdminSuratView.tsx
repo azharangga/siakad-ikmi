@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { getStudents, getActiveAcademicYear, getOfficialForDocument } from "@/app/actions/students";
-import { type StudentData, type Official } from "@/lib/types";
+import { type StudentData, type Official, type AcademicYear } from "@/lib/types";
 
 import { useSignature } from "@/hooks/useSignature";
+import { useToastMessage } from "@/hooks/use-toast-message";
 import { useLayout } from "@/app/context/LayoutContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,29 +14,46 @@ import PrintableSuratKeterangan from "@/components/features/surat-keterangan/Pri
 
 interface AdminSuratViewProps {
   initialStudents: StudentData[];
-  initialAcademicYear: string;
+  initialAcademicYear?: string;
+  initialAcademicYears?: AcademicYear[];
+  initialActiveYear?: string;
 }
 
-export default function AdminSuratView({ initialStudents, initialAcademicYear }: AdminSuratViewProps) {
+export default function AdminSuratView({
+  initialStudents,
+  initialAcademicYear,
+  initialAcademicYears,
+  initialActiveYear,
+}: AdminSuratViewProps) {
   const [studentsData, setStudentsData] = useState<StudentData[]>(initialStudents || []);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   
   // State Data Dinamis
+  const [nomorSurat, setNomorSurat] = useState("422.1/001/IKMI/III/2026"); 
   const [official, setOfficial] = useState<Official | null>(null);
-  
-  // State Form
-  const [nomorSurat, setNomorSurat] = useState(""); 
-  const [tahunAkademik, setTahunAkademik] = useState(initialAcademicYear); 
+  const [tahunAkademik, setTahunAkademik] = useState(initialAcademicYear || initialActiveYear || ""); 
   const [tempatLahir, setTempatLahir] = useState("");
   const [tanggalLahir, setTanggalLahir] = useState("");
   const [alamat, setAlamat] = useState("");
   const [namaOrangTua, setNamaOrangTua] = useState("");
   const [pekerjaanOrangTua, setPekerjaanOrangTua] = useState("");
 
-  // const { signatureType, setSignatureType, secureImage } = useSignature("none");
-  const [signatureType, setSignatureType] = useState<"basah" | "digital" | "none">("none");
-  
+  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none");
+  const { showLoading, dismiss } = useToastMessage();
+  const toastIdRef = React.useRef<string | number | null>(null);
+
+  useEffect(() => {
+    if (isSigLoading) {
+      if (!toastIdRef.current) toastIdRef.current = showLoading("Menyiapkan dokumen...");
+    } else {
+      if (toastIdRef.current) {
+        dismiss(toastIdRef.current);
+        toastIdRef.current = null;
+      }
+    }
+  }, [isSigLoading]);
+
   const secureImage = useMemo(() => {
     if (!official) return null;
     if (signatureType === "basah") return official.ttd_basah_url || null;

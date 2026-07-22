@@ -5,6 +5,7 @@ import { getStudents, getActiveAcademicYear, getActiveOfficial } from "@/app/act
 import { type StudentData, type Official } from "@/lib/types";
 
 import { useSignature } from "@/hooks/useSignature";
+import { useToastMessage } from "@/hooks/use-toast-message";
 import { useLayout } from "@/app/context/LayoutContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -23,10 +24,8 @@ export default function StudentSuratView({ initialStudentData, initialAcademicYe
   const [selectedIndex, setSelectedIndex] = useState(0);
   
   // State Data Dinamis
+  const [nomorSurat, setNomorSurat] = useState("422.1/001/IKMI/III/2026");
   const [official, setOfficial] = useState<Official | null>(initialOfficial);
-  
-  // State Form
-  const [nomorSurat, setNomorSurat] = useState(""); 
   const [tahunAkademik, setTahunAkademik] = useState(initialAcademicYear); 
   const [tempatLahir, setTempatLahir] = useState("");
   const [tanggalLahir, setTanggalLahir] = useState("");
@@ -34,8 +33,20 @@ export default function StudentSuratView({ initialStudentData, initialAcademicYe
   const [namaOrangTua, setNamaOrangTua] = useState("");
   const [pekerjaanOrangTua, setPekerjaanOrangTua] = useState("");
 
-  // const { signatureType, setSignatureType, secureImage } = useSignature("none");
-  const [signatureType, setSignatureType] = useState<"basah" | "digital" | "none">("none");
+  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none");
+  const { showLoading, dismiss } = useToastMessage();
+  const toastIdRef = React.useRef<string | number | null>(null);
+
+  useEffect(() => {
+    if (isSigLoading) {
+      if (!toastIdRef.current) toastIdRef.current = showLoading("Menyiapkan dokumen...");
+    } else {
+      if (toastIdRef.current) {
+        dismiss(toastIdRef.current);
+        toastIdRef.current = null;
+      }
+    }
+  }, [isSigLoading]);
 
   const secureImage = useMemo(() => {
     if (!official) return null;

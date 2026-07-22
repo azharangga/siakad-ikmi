@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,9 @@ import { useLayout } from "@/app/context/LayoutContext";
 import { usePdfPrint } from "@/hooks/use-pdf-print";
 import { calculateIPK, calculateTotalSKSLulus } from "@/lib/grade-calculations";
 import PrintableSKL from "@/components/features/surat-keterangan-lulus/PrintableSKL";
+
+import { useSignature } from "@/hooks/useSignature";
+import { useToastMessage } from "@/hooks/use-toast-message";
 
 interface AdminSKLViewProps {
   initialStudents: StudentData[];
@@ -85,7 +88,21 @@ export default function AdminSKLView({
   // Modal state
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
-  const [signatureType, setSignatureType] = useState<"basah" | "digital" | "none">("none");
+  const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none");
+  const { showLoading, dismiss } = useToastMessage();
+  const toastIdRef = useRef<string | number | null>(null);
+
+  useEffect(() => {
+    if (isSigLoading) {
+      if (!toastIdRef.current) toastIdRef.current = showLoading("Menyiapkan dokumen...");
+    } else {
+      if (toastIdRef.current) {
+        dismiss(toastIdRef.current);
+        toastIdRef.current = null;
+      }
+    }
+  }, [isSigLoading]);
+
   const [nomorSurat, setNomorSurat] = useState("");
 
   // Download all state
@@ -429,9 +446,9 @@ export default function AdminSKLView({
             <Button variant="outline" size="sm" onClick={() => setIsPrintModalOpen(false)} disabled={isPrinting}>
               Batal
             </Button>
-            <Button size="sm" onClick={handlePrintProcess} disabled={isPrinting} className="gap-1.5">
-              {isPrinting ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Memproses...</>
+            <Button size="sm" onClick={handlePrintProcess} disabled={isPrinting || isSigLoading} className="gap-1.5">
+              {isPrinting || isSigLoading ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> {isPrinting ? "Memproses..." : "Memuat..."}</>
               ) : (
                 <><Printer className="w-4 h-4" /> Cetak PDF</>
               )}
