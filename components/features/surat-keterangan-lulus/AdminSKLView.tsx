@@ -245,25 +245,32 @@ export default function AdminSKLView({
 
       {/* STAT CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-emerald-700 to-emerald-900">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-white/10 rounded-xl">
-              <GraduationCap className="h-8 w-8" />
+        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-emerald-600 to-teal-800">
+          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none">
+            <GraduationCap size={140} />
+          </div>
+          <CardContent className="p-5 flex items-center gap-4 relative z-10">
+            <div className="p-3.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
+              <GraduationCap className="h-7 w-7 text-white" />
             </div>
             <div>
-              <p className="text-emerald-100 text-sm font-medium">Mahasiswa Lulus (Siap Cetak SKL)</p>
-              <p className="text-3xl font-extrabold">{studentList.length}</p>
+              <p className="text-emerald-100 text-sm font-medium mb-0.5">Mahasiswa Lulus</p>
+              <p className="text-3xl font-extrabold text-white tracking-tight">{studentList.length}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-blue-700 to-blue-900">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-white/10 rounded-xl">
-              <Users className="h-8 w-8" />
+
+        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-blue-700 to-indigo-900">
+          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none">
+            <Users size={140} />
+          </div>
+          <CardContent className="p-5 flex items-center gap-4 relative z-10">
+            <div className="p-3.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
+              <Users className="h-7 w-7 text-white" />
             </div>
             <div>
-              <p className="text-blue-100 text-sm font-medium">Sudah Mengikuti Sidang</p>
-              <p className="text-3xl font-extrabold">
+              <p className="text-blue-100 text-sm font-medium mb-0.5">Sudah Mengikuti Sidang</p>
+              <p className="text-3xl font-extrabold text-white tracking-tight">
                 {studentList.filter((s) => !!sidangMap[s.id]).length}
               </p>
             </div>
