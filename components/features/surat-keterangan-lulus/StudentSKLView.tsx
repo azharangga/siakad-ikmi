@@ -15,7 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Printer, Loader2, GraduationCap, Award, BookOpen, Lock, Sparkles, PenTool, CheckCircle } from "lucide-react";
+import { Printer, Loader2, GraduationCap, Award, BookOpen, Lock, PenTool, CheckCircle, FileText, User } from "lucide-react";
 import { useSignature } from "@/hooks/useSignature";
 import { useToastMessage } from "@/hooks/use-toast-message";
 import PrintableSKL from "@/components/features/surat-keterangan-lulus/PrintableSKL";
@@ -165,53 +165,140 @@ export default function StudentSKLView({
       </div>
 
       <div className="space-y-6">
-        {/* HERO BANNER KELULUSAN */}
-        <div className="bg-gradient-to-r from-blue-700 via-primary to-indigo-800 text-white rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        {/* HEADER HERO BANNER */}
+        <div className="bg-gradient-to-br from-blue-800 to-blue-900 text-white rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-blue-700/50">
+          <div className="absolute -bottom-8 -right-8 opacity-15 rotate-12 pointer-events-none text-white">
+            <GraduationCap size={200} className="text-white" />
+          </div>
           <div className="space-y-2 relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold tracking-wide text-white border border-white/20">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Kelulusan Resmi Terverifikasi
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-md text-xs font-medium text-white border border-white/15">
+              <CheckCircle className="w-3.5 h-3.5 text-white" /> Status Kelulusan Resmi
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Selamat Atas Kelulusan Anda!</h2>
-            <p className="text-sm text-blue-100 max-w-2xl leading-relaxed">
-              Anda telah menyelesaikan seluruh rangkaian studi akademik di STMIK IKMI Cirebon dengan predikat <strong className="text-white underline decoration-amber-400 decoration-2">{predikat}</strong>. Surat Keterangan Lulus (SKL) resmi dapat diunduh dan dicetak secara mandiri di bawah ini.
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Selamat Atas Kelulusan Anda!</h2>
+            <p className="text-sm text-blue-100 max-w-2xl leading-relaxed font-normal">
+              Anda telah menyelesaikan seluruh rangkaian studi akademik di STMIK IKMI Cirebon dengan predikat{" "}
+              <strong className="text-white underline decoration-amber-400 decoration-2 underline-offset-4 font-bold">{predikat}</strong>. Dokumen Surat Keterangan Lulus (SKL) dapat diunduh dan dicetak secara mandiri.
             </p>
           </div>
-          <Button onClick={() => setIsPrintModalOpen(true)} size="lg" className="bg-white text-primary hover:bg-blue-50 font-bold shadow-lg gap-2 shrink-0 h-12 px-6 rounded-xl transition-all border border-white/30">
-            <Printer className="w-4 h-4 text-primary" /> Cetak SKL
+          <Button onClick={() => setIsPrintModalOpen(true)} size="lg" className="bg-white text-blue-950 hover:bg-blue-50 font-bold shadow-md gap-2 shrink-0 h-11 px-6 rounded-xl transition-all border border-white/30 relative z-10">
+            <Printer className="w-4 h-4 text-blue-950" /> Cetak SKL
           </Button>
         </div>
 
-        {/* CARD DETAIL SKL MAHASISWA */}
+        {/* SUMMARY METRICS CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card 1: IPK Yudisium */}
+          <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-blue-800 to-blue-900">
+            <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none text-white">
+              <Award size={130} className="text-white" />
+            </div>
+            <CardContent className="p-5 flex flex-col justify-between h-full relative z-10">
+              <div>
+                <p className="text-blue-100 text-xs font-semibold uppercase tracking-wider mb-1">IPK Yudisium</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-3xl font-extrabold text-white tracking-tight">{ipk.replace('.', ',')}</h3>
+                  <span className="text-sm text-blue-200 font-medium">/ 4,00</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-white" />
+                <span className="text-xs font-medium text-blue-100">Predikat: <strong className="text-white font-bold">{predikat}</strong></span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 2: Nilai Sidang & Skripsi */}
+          <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-blue-800 to-blue-900">
+            <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none text-white">
+              <BookOpen size={130} className="text-white" />
+            </div>
+            <CardContent className="p-5 flex flex-col justify-between h-full relative z-10">
+              <div>
+                <p className="text-blue-100 text-xs font-semibold uppercase tracking-wider mb-1">Nilai Sidang Skripsi</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-3xl font-extrabold text-white tracking-tight">{nilaiSkripsi}</h3>
+                  <span className="text-xs text-blue-200 font-medium">(Ujian Sidang Skripsi)</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-white" />
+                <span className="text-xs font-medium text-blue-100">Tgl Sidang: {tanggalSidangDisplay || "-"}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 3: Total SKS Lulus */}
+          <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-emerald-600 to-teal-700">
+            <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none text-white">
+              <CheckCircle size={130} className="text-white" />
+            </div>
+            <CardContent className="p-5 flex flex-col justify-between h-full relative z-10">
+              <div>
+                <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-1">Total SKS Lulus</p>
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-3xl font-extrabold text-white tracking-tight">{totalSksLulus}</h3>
+                  <span className="text-sm text-emerald-100 font-medium">/ {targetSKS} SKS</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-white" />
+                <span className="text-xs font-medium text-emerald-100">Syarat Kelulusan Terpenuhi</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* DETAIL BIODATA MAHASISWA & SKL */}
         <Card className="border-none shadow-sm ring-1 ring-slate-200">
           <CardContent className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-800">{student.profile.nama}</h2>
-                <p className="text-sm text-slate-500 font-mono">NIM: {student.profile.nim}</p>
-                <p className="text-sm text-primary font-semibold mt-0.5">
+                <h3 className="text-lg font-bold text-slate-800">{student.profile.nama}</h3>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">NIM: {student.profile.nim}</p>
+                <p className="text-xs text-primary font-semibold mt-0.5">
                   {student.profile.study_program?.nama || "-"} ({student.profile.study_program?.jenjang || "-"})
                 </p>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold">
-                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" /> Status: Tamat / Lulus Studi
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold shrink-0 shadow-xs">
+                <CheckCircle className="w-4 h-4 text-white shrink-0" /> Status: Tamat / Lulus Studi
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl border bg-slate-50 flex flex-col items-center text-center">
-                <BookOpen className="w-5 h-5 text-primary mb-1" />
-                <span className="text-xs text-slate-500 uppercase font-semibold">Nilai Skripsi</span>
-                <span className="text-xl font-extrabold text-slate-800 mt-1">{nilaiSkripsi}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <h4 className="font-semibold text-xs text-slate-500 uppercase tracking-wider">Informasi Surat</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-slate-500">Nomor Surat SKL:</span>
+                    <span className="font-mono font-bold text-slate-800">{autoNomorSurat}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-slate-500">Tanggal Sidang:</span>
+                    <span className="font-semibold text-slate-800">{tanggalSidangDisplay || "-"}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-500">Hari Sidang:</span>
+                    <span className="font-semibold text-slate-800">{sidang?.hari_sidang || "Jumat"}</span>
+                  </div>
+                </div>
               </div>
-              <div className="p-4 rounded-xl border bg-slate-50 flex flex-col items-center text-center">
-                <Award className="w-5 h-5 text-emerald-600 mb-1" />
-                <span className="text-xs text-slate-500 uppercase font-semibold">IPK Yudisium</span>
-                <span className="text-xl font-extrabold text-slate-800 mt-1">{ipk}</span>
-              </div>
-              <div className="p-4 rounded-xl border bg-slate-50 flex flex-col items-center text-center">
-                <GraduationCap className="w-5 h-5 text-amber-600 mb-1" />
-                <span className="text-xs text-slate-500 uppercase font-semibold">Predikat</span>
-                <span className="text-base font-extrabold text-slate-800 mt-1 truncate max-w-full">{predikat}</span>
+
+              <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <h4 className="font-semibold text-xs text-slate-500 uppercase tracking-wider">Hasil Akademik</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-slate-500">Indeks Prestasi Kumulatif:</span>
+                    <span className="font-bold text-emerald-700">{ipk.replace('.', ',')} / 4,00</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-200/60">
+                    <span className="text-slate-500">Predikat Yudisium:</span>
+                    <span className="font-semibold text-slate-800">{predikat}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-500">Nilai Skripsi / TA:</span>
+                    <span className="font-bold text-blue-700">{nilaiSkripsi}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -223,7 +310,9 @@ export default function StudentSKLView({
         <DialogContent className="sm:max-w-md border border-border shadow-xl">
           <DialogHeader className="border-b pb-3">
             <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-              <Printer className="w-5 h-5 text-primary" />
+              <div className="p-1.5 bg-blue-600 rounded-md flex items-center justify-center shrink-0">
+                <Printer className="w-4 h-4 text-white" />
+              </div>
               Cetak Surat Keterangan Lulus
             </DialogTitle>
           </DialogHeader>
@@ -232,7 +321,10 @@ export default function StudentSKLView({
             {/* Nomor Surat Readonly */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-primary" /> Nomor Surat
+                <span className="p-1 bg-blue-600 rounded-sm text-white flex items-center justify-center">
+                  <Lock className="w-3 h-3 text-white" />
+                </span>
+                Nomor Surat
               </Label>
               <Input
                 value={autoNomorSurat}
@@ -245,7 +337,10 @@ export default function StudentSKLView({
             {hasAnySignature && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <PenTool className="w-3.5 h-3.5 text-primary" /> Opsi Tanda Tangan
+                  <span className="p-1 bg-blue-600 rounded-sm text-white flex items-center justify-center">
+                    <PenTool className="w-3 h-3 text-white" />
+                  </span>
+                  Opsi Tanda Tangan
                 </Label>
                 <Select value={signatureType} onValueChange={(v) => setSignatureType(v as "basah" | "digital" | "none")}>
                   <SelectTrigger className="w-full h-10 text-xs font-medium border-slate-200">

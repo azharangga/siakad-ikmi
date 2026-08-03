@@ -83,6 +83,14 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
     return null;
   };
 
+  const getCleanIPK = (val: string | number) => {
+    if (val === undefined || val === null || val === "") return "0,00";
+    const str = String(val).replace(/&nbsp;/g, "").replace(/\s+/g, "");
+    const num = parseFloat(str.replace(",", "."));
+    if (isNaN(num)) return "0,00";
+    return num.toFixed(2).replace(".", ",");
+  };
+
   return (
     <div className="flex print:flex print:w-full print:justify-center shrink-0 justify-start w-full w-[210mm] overflow-visible mb-0">
       <div
@@ -154,10 +162,10 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
                 <strong>{getEffectiveHariSidang()}</strong> tanggal{" "}
                 <strong>{getEffectiveTanggalSidang()}</strong>{" "}
                 dihadapan Penguji Sidang Skripsi, yang bersangkutan dinyatakan{" "}
-                <strong className="tracking-widest">L u l u s</strong> dengan nilai Sidang Skripsi{" "}
+                <strong className="tracking-[0.45em] whitespace-nowrap -mr-[0.45em]">Lulus</strong> dengan nilai Sidang Skripsi{" "}
                 <strong>{nilaiSidang || "A"}</strong> dan{" "}
-                <strong>IPK YUDISIUM : {ipkYudisium || "0.00"}</strong> dengan predikat{" "}
-                <strong className="tracking-widest">{predikat || "-"}</strong>.
+                <strong className="whitespace-nowrap">IPK YUDISIUM : {getCleanIPK(ipkYudisium)}</strong> dengan predikat{" "}
+                <strong>{predikat || "-"}</strong>.
               </p>
 
               <p className="mb-10 text-justify leading-[1.7]">
@@ -170,62 +178,62 @@ const PrintableSKL = forwardRef<HTMLDivElement, PrintableSKLProps>(({
             {/* FOOTER 2 TANDA TANGAN */}
             <div className="flex justify-between items-start mt-6 text-[11px] font-caladea px-4">
               {/* Kiri: Ketua Prodi */}
-              <div className="flex flex-col items-center w-[45%]">
+              <div className="flex flex-col items-center w-[45%] text-center">
                 <p className="mb-0 leading-tight">Cirebon, {tanggalDisplay || "..."}</p>
-                <p className="font-normal mb-2 leading-tight text-center">
+                <p className="font-normal mb-1 leading-tight text-center">
                   {officialKaprodi?.jabatan || "Ketua Prodi"}
                 </p>
                 <div
-                  className="relative w-32 h-24 my-1 flex items-center justify-center select-none"
+                  className="relative w-full h-20 my-1 flex items-center justify-center select-none"
                   onContextMenu={(e) => e.preventDefault()}
                 >
                   {signatureType !== "none" && getSignatureUrl(officialKaprodi) && (
                     <img
                       src={getSignatureUrl(officialKaprodi)!}
                       alt="TTD Kaprodi"
-                      className={`absolute w-full h-full object-contain z-10 top-0 left-0 mix-blend-multiply translate-y-[-20px] pointer-events-none select-none ${
-                        signatureType === "basah" ? "scale-[1.6]" : "scale-[1.3]"
+                      className={`absolute max-h-24 object-contain z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mix-blend-multiply pointer-events-none select-none ${
+                        signatureType === "basah" ? "scale-[1.5]" : "scale-[1.2]"
                       }`}
                       draggable={false}
                     />
                   )}
                 </div>
-                <div className="text-center z-20 mt-[-35px] relative">
-                  <p className="font-bold underline text-[12px] leading-none">
+                <div className="text-center z-20 w-full px-2">
+                  <p className="font-bold underline text-[12px] leading-normal whitespace-nowrap overflow-hidden text-ellipsis">
                     {officialKaprodi?.lecturer?.nama || "..."}
                   </p>
-                  <p className="font-bold text-[11px] leading-tight mt-1">
+                  <p className="font-bold text-[11px] leading-normal whitespace-nowrap mt-0.5">
                     NIDN. {officialKaprodi?.lecturer?.nidn || "..."}
                   </p>
                 </div>
               </div>
 
               {/* Kanan: Ketua STMIK */}
-              <div className="flex flex-col items-center w-[45%]">
+              <div className="flex flex-col items-center w-[45%] text-center">
                 <p className="mb-0 leading-tight">Mengetahui,</p>
-                <p className="font-normal mb-2 leading-tight text-center">
+                <p className="font-normal mb-1 leading-tight text-center">
                   {officialKetua?.jabatan || "Ketua STMIK IKMI Cirebon"}
                 </p>
                 <div
-                  className="relative w-32 h-24 my-1 flex items-center justify-center select-none"
+                  className="relative w-full h-20 my-1 flex items-center justify-center select-none"
                   onContextMenu={(e) => e.preventDefault()}
                 >
                   {signatureType !== "none" && getSignatureUrl(officialKetua) && (
                     <img
                       src={getSignatureUrl(officialKetua)!}
                       alt="TTD Ketua STMIK"
-                      className={`absolute w-full h-full object-contain z-10 top-0 left-0 mix-blend-multiply translate-y-[-20px] pointer-events-none select-none ${
-                        signatureType === "basah" ? "scale-[1.6]" : "scale-[1.3]"
+                      className={`absolute max-h-24 object-contain z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 mix-blend-multiply pointer-events-none select-none ${
+                        signatureType === "basah" ? "scale-[1.5]" : "scale-[1.2]"
                       }`}
                       draggable={false}
                     />
                   )}
                 </div>
-                <div className="text-center z-20 mt-[-35px] relative">
-                  <p className="font-bold underline text-[12px] leading-none">
+                <div className="text-center z-20 w-full px-2">
+                  <p className="font-bold underline text-[12px] leading-normal whitespace-nowrap overflow-hidden text-ellipsis">
                     {officialKetua?.lecturer?.nama || "..."}
                   </p>
-                  <p className="font-bold text-[11px] leading-tight mt-1">
+                  <p className="font-bold text-[11px] leading-normal whitespace-nowrap mt-0.5">
                     NIDN. {officialKetua?.lecturer?.nidn || "..."}
                   </p>
                 </div>
