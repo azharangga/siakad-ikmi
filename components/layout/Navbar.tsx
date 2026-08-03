@@ -27,6 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import GlobalSearchModal from "@/components/layout/GlobalSearchModal";
+
 type NavbarProps = {
   onOpenSidebar?: () => void;
   onToggleCollapse?: () => void;
@@ -42,9 +44,9 @@ export default function Navbar({
   user,
   academicYearData 
 }: NavbarProps) {
-  // Variabel displayName dan displayRole tetap ada jika nanti dibutuhkan di dalam dropdown
   const displayName = user?.name || user?.username || "Pengguna";
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -55,64 +57,76 @@ export default function Navbar({
     : "TA Belum Diatur";
 
   return (
-    <nav className="w-full bg-white/80 backdrop-blur-md print:hidden border-b border-slate-200/60">
-      <div className="w-full px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-        
-        {/* === LEFT SECTION === */}
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={onOpenSidebar}
-            className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100/60 transition focus:outline-none focus:ring-0"
-            aria-label="Buka menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-
-          {/* Toggle Sidebar Desktop */}
-          <Tooltip 
-            content={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"} 
-            position="right"
-          >
+    <>
+      <GlobalSearchModal isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
+      
+      <nav className="w-full bg-white/80 backdrop-blur-md print:hidden border-b border-slate-200/60">
+        <div className="w-full px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+          
+          {/* === LEFT SECTION === */}
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
-              onClick={onToggleCollapse}
-              className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100/60 transition focus:outline-none focus:ring-0"
+              onClick={onOpenSidebar}
+              className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100/60 transition focus:outline-none focus:ring-0"
+              aria-label="Buka menu"
             >
-              {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </button>
-          </Tooltip>
 
-          {/* SEARCH BAR */}
-          <div className="hidden md:block ml-2">
-            <div className="relative group">
-              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 transition-colors duration-200 group-focus-within:text-blue-600">
-                <Search className="h-4 w-4" />
-              </span>
-              <input
-                type="text"
-                placeholder="Cari data..."
-                className="w-52 lg:w-60 rounded-full bg-slate-100 py-2 pl-9 pr-4 text-xs text-slate-700 border border-transparent outline-none transition-all duration-200 hover:bg-slate-100/70 focus:bg-white focus:border-blue-200 focus:ring-2 focus:ring-blue-100"
-              />
+            {/* Toggle Sidebar Desktop */}
+            <Tooltip 
+              content={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"} 
+              position="right"
+            >
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100/60 transition focus:outline-none focus:ring-0"
+              >
+                {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              </button>
+            </Tooltip>
+
+            {/* GLOBAL SEARCH TRIGGER (DESKTOP) */}
+            <div className="hidden md:block ml-2">
+              <div 
+                className="relative group cursor-pointer"
+                onClick={() => setIsSearchOpen(true)}
+              >
+                <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 transition-colors duration-200 group-hover:text-slate-600">
+                  <Search className="h-4 w-4" />
+                </span>
+                <input
+                  type="text"
+                  readOnly
+                  placeholder="Cari data..."
+                  className="w-52 lg:w-60 rounded-full bg-slate-100 py-2 pl-9 pr-4 text-xs text-slate-700 border border-transparent outline-none transition-all duration-200 hover:bg-slate-100/70 cursor-pointer"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* === RIGHT SECTION === */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          
-          {/* [DYNAMIC] INFO TAHUN AKADEMIK */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 mr-2">
-             <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
-             <span className="text-xs font-medium text-slate-600">
-               {academicYear}
-             </span>
-          </div>
+          {/* === RIGHT SECTION === */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            
+            {/* [DYNAMIC] INFO TAHUN AKADEMIK */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 mr-2">
+               <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+               <span className="text-xs font-medium text-slate-600">
+                 {academicYear}
+               </span>
+            </div>
 
-          {/* Mobile Search Button */}
-          <button type="button" className="md:hidden h-9 w-9 inline-flex items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100/60 focus:outline-none focus:ring-0" aria-label="Cari">
-            <Search className="h-5 w-5" />
-          </button>
+            {/* Mobile Search Button */}
+            <button 
+              type="button" 
+              onClick={() => setIsSearchOpen(true)}
+              className="md:hidden h-9 w-9 inline-flex items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100/60 focus:outline-none focus:ring-0" 
+              aria-label="Cari"
+            >
+              <Search className="h-5 w-5" />
+            </button>
 
           {/* USER DROPDOWN */}
           <DropdownMenu>
@@ -188,5 +202,6 @@ export default function Navbar({
         variant="destructive"
       />
     </nav>
+    </>
   );
 }
