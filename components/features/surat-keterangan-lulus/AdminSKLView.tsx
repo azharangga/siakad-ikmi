@@ -452,8 +452,7 @@ export default function AdminSKLView({
       <Dialog open={isPrintModalOpen} onOpenChange={setIsPrintModalOpen}>
         <DialogContent className="sm:max-w-lg border border-border shadow-xl">
           <DialogHeader className="border-b pb-3">
-            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-              <FileText className="w-5 h-5 text-primary" />
+            <DialogTitle className="text-base font-semibold">
               Cetak Surat Keterangan Lulus (SKL)
             </DialogTitle>
           </DialogHeader>
@@ -524,22 +523,25 @@ export default function AdminSKLView({
 
               {/* Nomor Surat */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-primary" /> Nomor Surat
+                <Label className="text-xs font-semibold text-slate-700">
+                  Nomor Surat
                 </Label>
-                <Input
-                  value={nomorSurat}
-                  readOnly
-                  disabled
-                  className="h-10 font-mono text-xs font-bold bg-slate-50 border-slate-200 text-slate-700 cursor-not-allowed select-all w-full"
-                />
+                <div className="relative flex items-center">
+                  <Input
+                    value={nomorSurat}
+                    readOnly
+                    disabled
+                    className="h-10 font-mono text-xs font-bold pr-9 bg-slate-50 border-slate-200 text-slate-700 cursor-not-allowed select-all w-full"
+                  />
+                  <Lock className="w-3.5 h-3.5 absolute right-3 text-slate-400 pointer-events-none" />
+                </div>
               </div>
 
               {/* Tanda Tangan */}
               {hasAnySignature && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <PenTool className="w-3.5 h-3.5 text-primary" /> Opsi Tanda Tangan
+                  <Label className="text-xs font-semibold text-slate-700">
+                    Opsi Tanda Tangan
                   </Label>
                   <Select value={signatureType} onValueChange={(v) => setSignatureType(v as "basah" | "digital" | "none")}>
                     <SelectTrigger className="w-full h-10 text-xs font-medium border-slate-200">
