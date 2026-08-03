@@ -381,19 +381,20 @@ export default function ProfileForm({
       <Card className="h-full border-none shadow-xl bg-white rounded-xl ring-1 ring-slate-100 flex flex-col overflow-hidden">
         
         {/* HEADER / BANNER */}
-        <div className="h-32 sm:h-40 bg-gradient-to-r from-[#0077b5] to-[#00a0dc] relative shrink-0 overflow-hidden">
-          <div className="absolute inset-0 opacity-20"
-               style={{
-                   backgroundImage: `linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)`,
-                   backgroundSize: '32px 32px'
-               }}
-          ></div>
-          <div className="absolute inset-0 opacity-10"
-               style={{
-                   backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)"
-               }}
-          ></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none"></div>
+        <div className="h-36 sm:h-44 bg-[#1a2d52] relative shrink-0 overflow-hidden shadow-inner">
+          {/* Mega Mendung Batik Pattern Overlay - Matching KTM exactly */}
+          <div 
+            className="absolute inset-0 z-0 pointer-events-none opacity-30"
+            style={{
+               backgroundImage: "url('/img/mega_mendung.svg')",
+               backgroundSize: "cover",
+               backgroundPosition: "center",
+               backgroundRepeat: "no-repeat",
+            }}
+          />
+          
+          {/* Gradient Overlay for Subtle Depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/10 pointer-events-none"></div>
         </div>
 
         <CardContent className="px-4 pb-6 sm:px-6 sm:pb-8 flex-1">
