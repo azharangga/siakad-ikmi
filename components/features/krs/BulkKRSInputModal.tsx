@@ -132,6 +132,18 @@ export default function BulkKRSInputModal({
     }
   }, [availableSemesters, targetSemester]);
 
+  // Reset pagination, search, and selections whenever targetSemester or step changes
+  useEffect(() => {
+    setStudentPage(1);
+    setCoursePage(1);
+    setStudentSearch('');
+    setCourseSearch('');
+    setStudentProdiFilter([]);
+    setCourseProdiFilter([]);
+    setSelectedStudentIds(new Set());
+    setSelectedCourseIds(new Set());
+  }, [targetSemester]);
+
   // --- DATA FILTERING LOGIC (Applied only in Step 2 & 3) ---
   const uniqueStudentProdis = useMemo(() => {
     const prodis = new Set<string>();

@@ -7,16 +7,17 @@ export function calculateStudentSemester(
   if (!angkatan || !activeYear) return 1;
 
   const angkatanNum = typeof angkatan === "string" ? parseInt(angkatan) : angkatan;
-  const currentStartYear = parseInt(activeYear.nama.split('/')[0]);
+  const currentStartYear = parseInt((activeYear.nama || "").split('/')[0].split('-')[0].trim());
 
   if (isNaN(currentStartYear) || isNaN(angkatanNum)) return 1;
 
   const yearDiff = currentStartYear - angkatanNum;
   let sem = yearDiff * 2;
 
-  if (activeYear.semester === 'Ganjil') {
+  const semStr = (activeYear.semester || "").toString().trim().toLowerCase();
+  if (semStr.includes("ganjil") || semStr === "1") {
     sem += 1;
-  } else if (activeYear.semester === 'Genap') {
+  } else if (semStr.includes("genap") || semStr === "2") {
     sem += 2;
   }
 

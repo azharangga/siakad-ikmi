@@ -16,7 +16,7 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
 
     if (!academicYear) return [];
 
-    // 1. Ambil semua mahasiswa aktif - CHUNKED PAGINATION
+    // 1. Ambil semua mahasiswa dari database - CHUNKED PAGINATION
     let allStudents: any[] = [];
     let page = 0;
     const pageSize = 1000;
@@ -29,11 +29,13 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
           id, nim, nama, angkatan, status_mahasiswa,
           study_program:study_programs (nama, jenjang)
         `)
-        .eq("is_active", true)
         .order("nama", { ascending: true })
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
-      if (studentError) throw studentError;
+      if (studentError) {
+        console.error("Error fetching students page:", studentError);
+        throw studentError;
+      }
 
       if (!pageStudents || pageStudents.length === 0) {
         hasMore = false;
@@ -47,7 +49,10 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
       }
     }
 
-    // 2. Ambil student_id yang SUDAH punya KRS di tahun ini - CHUNKED PAGINATION
+    // Filter non-lulus di JS (case-insensitive)
+    const activeStudents = allStudents.filter(s => (s.status_mahasiswa || '').trim().toUpperCase() !== 'LULUS');
+
+    // 2. Ambil student_id yang SUDAH punya KRS disetujui (APPROVED) di tahun ini - CHUNKED PAGINATION
     let existingKRS: any[] = [];
     let krsPage = 0;
     let hasMoreKrs = true;
@@ -57,6 +62,7 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
         .from("krs")
         .select("student_id")
         .eq("academic_year_id", academicYearId)
+        .eq("status", "APPROVED")
         .range(krsPage * pageSize, (krsPage + 1) * pageSize - 1);
 
       if (krsError) throw krsError;
@@ -75,8 +81,8 @@ export async function getStudentsWithoutKRS(academicYearId: string) {
 
     const studentIdsWithKRS = new Set(existingKRS.map((k: any) => k.student_id));
 
-    // 3. Filter mahasiswa yang BELUM punya KRS
-    const studentsWithoutKRS = allStudents.filter(s => !studentIdsWithKRS.has(s.id));
+    // 3. Filter mahasiswa yang BELUM punya KRS disetujui
+    const studentsWithoutKRS = activeStudents.filter(s => !studentIdsWithKRS.has(s.id));
 
     // 4. Ambil data MBKM untuk tahun ini
     const { data: mbkmData } = await supabase
