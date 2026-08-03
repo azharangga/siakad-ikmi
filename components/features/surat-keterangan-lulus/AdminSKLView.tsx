@@ -12,7 +12,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Printer, Loader2, GraduationCap, Users, Lock, FileText, CheckCircle2, Download, AlertTriangle, PenTool, FileArchive } from "lucide-react";
+import { Printer, Loader2, GraduationCap, Users, Lock, FileText, CheckCircle2, Download, AlertTriangle, PenTool, FileArchive, Award, Trophy, ShieldCheck } from "lucide-react";
 
 import { getOfficialForDocument } from "@/app/actions/students";
 import { StudentData, StudyProgram, Official, SidangSkripsi, PredikatYudisium } from "@/lib/types";
@@ -117,6 +117,23 @@ export default function AdminSKLView({
   const selectedIPK = selectedStudent ? getIPKYudisium(selectedStudent) : "0.00";
   const selectedPredikat = selectedStudent ? getPredikat(parseFloat(selectedIPK), predikatList) : "-";
   const selectedNilaiSkripsi = selectedStudent ? getNilaiSkripsi(selectedStudent) : "-";
+
+  // Derived summary stats for top metric cards
+  const totalLulus = studentList.length;
+  const sudahSidangCount = useMemo(
+    () => studentList.filter((s) => !!sidangMap[s.id]).length,
+    [studentList, sidangMap]
+  );
+  const avgIPKDisplay = useMemo(() => {
+    if (studentList.length === 0) return "0.00";
+    const sum = studentList.reduce((acc, s) => acc + (parseFloat(getIPKYudisium(s)) || 0), 0);
+    return (sum / studentList.length).toFixed(2).replace('.', ',');
+  }, [studentList]);
+
+  const prodiCount = useMemo(() => {
+    const set = new Set(studentList.map((s) => s.profile.study_program?.nama).filter(Boolean));
+    return set.size;
+  }, [studentList]);
 
   const handleOpenPrintModal = async (student: StudentData) => {
     setSelectedStudent(student);
@@ -302,35 +319,113 @@ export default function AdminSKLView({
       )}
 
       {/* STAT CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-emerald-600 to-teal-800">
-          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none">
-            <GraduationCap size={140} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* CARD 1: Total Mahasiswa Lulus */}
+        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-emerald-600 to-teal-800 flex flex-col justify-between min-h-[140px]">
+          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none text-white">
+            <GraduationCap size={130} />
           </div>
-          <CardContent className="p-5 flex items-center gap-4 relative z-10">
-            <div className="p-3.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
-              <GraduationCap className="h-7 w-7 text-white" />
+          <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-1">
+                  Mahasiswa Lulus
+                </p>
+                <h3 className="text-3xl font-extrabold text-white tracking-tight">{totalLulus}</h3>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
+                <GraduationCap className="h-6 w-6 text-white" />
+              </div>
             </div>
-            <div>
-              <p className="text-emerald-100 text-sm font-medium mb-0.5">Mahasiswa Lulus</p>
-              <p className="text-3xl font-extrabold text-white tracking-tight">{studentList.length}</p>
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-emerald-100">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Users className="w-3.5 h-3.5 text-white" />
+                {prodiCount} Program Studi
+              </span>
+              <span className="bg-emerald-500/30 px-2 py-0.5 rounded text-[11px] font-semibold text-white">
+                Syarat Terpenuhi
+              </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-blue-700 to-indigo-900">
-          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none">
-            <Users size={140} />
+        {/* CARD 2: Ujian Sidang Skripsi */}
+        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-blue-700 to-indigo-900 flex flex-col justify-between min-h-[140px]">
+          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none text-white">
+            <CheckCircle2 size={130} />
           </div>
-          <CardContent className="p-5 flex items-center gap-4 relative z-10">
-            <div className="p-3.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
-              <Users className="h-7 w-7 text-white" />
+          <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-blue-100 text-xs font-semibold uppercase tracking-wider mb-1">
+                  Sudah Mengikuti Sidang
+                </p>
+                <h3 className="text-3xl font-extrabold text-white tracking-tight">{sudahSidangCount}</h3>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
+                <CheckCircle2 className="h-6 w-6 text-white" />
+              </div>
             </div>
-            <div>
-              <p className="text-blue-100 text-sm font-medium mb-0.5">Sudah Mengikuti Sidang</p>
-              <p className="text-3xl font-extrabold text-white tracking-tight">
-                {studentList.filter((s) => !!sidangMap[s.id]).length}
-              </p>
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-blue-100">
+              <span className="flex items-center gap-1.5 font-medium">
+                <FileText className="w-3.5 h-3.5 text-white" />
+                {totalLulus > 0 ? Math.round((sudahSidangCount / totalLulus) * 100) : 0}% Terverifikasi Sidang
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CARD 3: Rata-Rata IPK Yudisium */}
+        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-amber-600 to-orange-700 flex flex-col justify-between min-h-[140px]">
+          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none text-white">
+            <Award size={130} />
+          </div>
+          <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-amber-100 text-xs font-semibold uppercase tracking-wider mb-1">
+                  Rata-Rata IPK Yudisium
+                </p>
+                <div className="flex items-baseline gap-1.5">
+                  <h3 className="text-3xl font-extrabold text-white tracking-tight">{avgIPKDisplay}</h3>
+                  <span className="text-xs text-amber-200 font-medium">/ 4,00</span>
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
+                <Award className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-amber-100">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Trophy className="w-3.5 h-3.5 text-white" />
+                Performa Kumulatif
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CARD 4: Status Penerbitan SKL */}
+        <Card className="border-none shadow-md text-white overflow-hidden relative bg-gradient-to-br from-purple-700 to-indigo-800 flex flex-col justify-between min-h-[140px]">
+          <div className="absolute -bottom-6 -right-6 opacity-15 rotate-12 pointer-events-none text-white">
+            <ShieldCheck size={130} />
+          </div>
+          <CardContent className="p-5 relative z-10 flex flex-col justify-between h-full space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-purple-100 text-xs font-semibold uppercase tracking-wider mb-1">
+                  Penerbitan SKL
+                </p>
+                <h3 className="text-2xl font-extrabold text-white tracking-tight">Siap Cetak PDF</h3>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm shrink-0">
+                <ShieldCheck className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-purple-100">
+              <span className="flex items-center gap-1.5 font-medium">
+                <FileText className="w-3.5 h-3.5 text-white" />
+                Penandatanganan Legitimasi
+              </span>
             </div>
           </CardContent>
         </Card>
