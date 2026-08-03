@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Printer, Loader2 } from "lucide-react";
+import { Printer, Loader2, FileArchive } from "lucide-react";
 
 import { getStudents, getStudyPrograms, getOfficialForDocument } from "@/app/actions/students";
 import { StudentData, StudyProgram, Official, TranscriptItem } from "@/lib/types";
@@ -43,16 +43,19 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
   
   const [isLoading, setIsLoading] = useState(false);
 
+  // Selection & Bulk ZIP State
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [isGeneratingZip, setIsGeneratingZip] = useState(false);
+
   // Modal Cetak State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
   
   // Print Configuration State
   const { signatureType, setSignatureType, isLoading: isSigLoading } = useSignature("none", official);
-  const { isPrinting, printPdf } = usePdfPrint();
+  const { isPrinting, printPdf, generatePdfBlob } = usePdfPrint();
   const printRef = useRef<HTMLDivElement>(null);
   const { showLoading, dismiss } = useToastMessage();
-  // const [totalPages, setTotalPages] = useState(1);
   
   // Derive Signature from Official
   const secureImage = useMemo(() => {
@@ -65,9 +68,7 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
   const toastIdRef = useRef<string | number | null>(null);
 
   // === LOADING TOAST SIGNATURE ===
-  // === LOADING TOAST ===
   useEffect(() => {
-    // Optional loading state
     if (isSigLoading) {
         if (!toastIdRef.current) toastIdRef.current = showLoading("Menyiapkan dokumen...");
     } else {
@@ -81,7 +82,6 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
   // === DATA TRANSKRIP (Clean Data) ===
   const transcriptData = useMemo(() => {
     if (!selectedStudent?.transcript) return [];
-    // Filter mata kuliah yang nilainya belum ada (-)
     return selectedStudent.transcript.filter((item: TranscriptItem) => item.hm !== '-');
   }, [selectedStudent]);
 
@@ -100,7 +100,6 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
     setSelectedStudent(student);
     setIsPrintModalOpen(true);
 
-    // Fetch dynamic official based on student's prodi
     if (student.profile.study_program_id) {
         const off = await getOfficialForDocument(student.profile.study_program_id);
         setOfficial(off);
@@ -120,6 +119,130 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
     setIsPrintModalOpen(false);
   };
 
+  // === BULK ZIP PRINT HANDLER ===
+  const handlePrintBulk = async () => {
+    if (selectedStudents.size === 0) {
+      toast.error("Pilih minimal 1 mahasiswa untuk dicetak");
+      return;
+    }
+
+    setIsGeneratingZip(true);
+    const toastId = toast.loading("Memulai pembuatan ZIP Transkrip...");
+
+    try {
+      const JSZip = (await import("jszip")).default;
+      const { createRoot } = await import("react-dom/client");
+      const zip = new JSZip();
+      const selectedList = Array.from(selectedStudents);
+      let processedCount = 0;
+
+      for (const studentId of selectedList) {
+        const s = studentList.find((item) => item.id === studentId);
+        if (!s) continue;
+
+        toast.loading(`Memproses ${processedCount + 1}/${selectedList.length}: ${s.profile.nama}`, {
+          id: toastId,
+        });
+
+        // Get kaprodi/official
+        let off: Official | null = null;
+        if (s.profile.study_program_id) {
+          off = await getOfficialForDocument(s.profile.study_program_id);
+        } else {
+          off = await getOfficialForDocument();
+        }
+
+        const tData = (s.transcript || []).filter((item: TranscriptItem) => item.hm !== '-');
+        const ipkVal = calculateIPK(tData).replace('.', ',');
+        const sksVal = calculateTotalSKSLulus(tData);
+        const mutuVal = calculateTotalMutu(tData);
+
+        // Create container
+        const container = document.createElement("div");
+        container.style.position = "absolute";
+        container.style.top = "0";
+        container.style.left = "-9999px";
+        container.style.width = "210mm";
+        document.body.appendChild(container);
+
+        const root = createRoot(container);
+
+        await new Promise<void>((resolve) => {
+          root.render(
+            React.createElement(PrintableTranskrip, {
+              loading: false,
+              currentStudent: s,
+              transcriptData: tData,
+              ipk: ipkVal,
+              totalSKS: sksVal,
+              totalNM: mutuVal,
+              signatureType: "none",
+              signatureBase64: null,
+              official: off,
+              isCollapsed: true,
+            })
+          );
+          setTimeout(resolve, 300);
+        });
+
+        const pdfBlob = await generatePdfBlob({
+          elementRef: { current: container },
+          fileName: "",
+          pdfFormat: "a4",
+          pdfOrientation: "portrait",
+        });
+
+        if (pdfBlob) {
+          const fileName = `Transkrip_${s.profile.nama.replace(/\s+/g, "_")}_${s.profile.nim}.pdf`;
+          zip.file(fileName, pdfBlob);
+        }
+
+        root.unmount();
+        document.body.removeChild(container);
+        processedCount++;
+      }
+
+      toast.loading("Mengompresi file ZIP...", { id: toastId });
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Transkrip_Mahasiswa_${new Date().toISOString().split('T')[0]}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setSelectedStudents(new Set());
+      toast.success(`Berhasil membuat ZIP berisi ${processedCount} file Transkrip`, { id: toastId });
+    } catch (error) {
+      console.error("Error generating ZIP:", error);
+      toast.error("Gagal membuat file ZIP", { id: toastId });
+    } finally {
+      setIsGeneratingZip(false);
+    }
+  };
+
+  const customActions = selectedStudents.size > 0 && (
+    <Button
+      variant="outline" 
+      onClick={handlePrintBulk}
+      disabled={isGeneratingZip}
+      className="ml-2 bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+    >
+      {isGeneratingZip ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Membuat ZIP...
+        </>
+      ) : (
+        <>
+          <FileArchive className="mr-2 h-4 w-4" />
+          Cetak ZIP
+        </>
+      )}
+    </Button>
+  );
+
   return (
     <>
       {/* HIDDEN PRINT COMPONENT */}
@@ -137,7 +260,6 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
                 signatureBase64={secureImage}
                 official={official}
                 isCollapsed={true} // Force full width
-                // setTotalPages={setTotalPages}
              />
         </div>
       )}
@@ -152,6 +274,9 @@ export default function AdminTranskripView({ initialStudents, initialStudyProgra
             onEdit={handleOpenPrintModal}
             actionLabel="Cetak Transkrip"
             actionIcon={<Printer className="w-3.5 h-3.5 mr-2" />}
+            selectedIds={selectedStudents}
+            onSelectionChange={setSelectedStudents}
+            customActions={customActions}
           />
         </CardContent>
       </Card>

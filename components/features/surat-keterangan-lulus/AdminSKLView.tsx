@@ -12,7 +12,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Printer, Loader2, GraduationCap, Users, Lock, FileText, CheckCircle2, Download, AlertTriangle, PenTool } from "lucide-react";
+import { Printer, Loader2, GraduationCap, Users, Lock, FileText, CheckCircle2, Download, AlertTriangle, PenTool, FileArchive } from "lucide-react";
 
 import { getOfficialForDocument } from "@/app/actions/students";
 import { StudentData, StudyProgram, Official, SidangSkripsi, PredikatYudisium } from "@/lib/types";
@@ -85,6 +85,10 @@ export default function AdminSKLView({
   const [studyPrograms] = useState<StudyProgram[]>(initialStudyPrograms);
   const [officialKaprodi, setOfficialKaprodi] = useState<Official | null>(null);
 
+  // Selection & Bulk ZIP State
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [isGeneratingZip, setIsGeneratingZip] = useState(false);
+
   // Modal state
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
@@ -104,10 +108,6 @@ export default function AdminSKLView({
   }, [isSigLoading]);
 
   const [nomorSurat, setNomorSurat] = useState("");
-
-  // Download all state
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const { isPrinting, printPdf, generatePdfBlob } = usePdfPrint();
   const printRef = useRef<HTMLDivElement>(null);
@@ -141,91 +141,132 @@ export default function AdminSKLView({
     setIsPrintModalOpen(false);
   };
 
-  // Download semua SKL sekaligus
-  const handleDownloadAll = async () => {
-    if (studentList.length === 0) return;
-    setIsDownloadingAll(true);
-    setDownloadProgress(0);
-
-    const JSZip = (await import("jszip")).default;
-    const zip = new JSZip();
-
-    for (let i = 0; i < studentList.length; i++) {
-      const student = studentList[i];
-      setDownloadProgress(Math.round(((i + 1) / studentList.length) * 100));
-
-      let kaprodi: Official | null = null;
-      if (student.profile.study_program_id) {
-        kaprodi = await getOfficialForDocument(student.profile.study_program_id);
-      }
-
-      const sidang = sidangMap[student.id];
-      const ipk = getIPKYudisium(student);
-      const pred = getPredikat(parseFloat(ipk), predikatList);
-      const nilai = getNilaiSkripsi(student);
-      const autoNomor = generateNomorSuratSKL(student, i);
-
-      const container = document.createElement("div");
-      container.style.position = "absolute";
-      container.style.top = "0";
-      container.style.left = "-9999px";
-      container.style.width = "210mm";
-      document.body.appendChild(container);
-
-      const { createRoot } = await import("react-dom/client");
-      const root = createRoot(container);
-
-      await new Promise<void>((resolve) => {
-        root.render(
-          React.createElement(PrintableSKL, {
-            loading: false,
-            currentStudent: student,
-            officialKaprodi: kaprodi,
-            officialKetua: officialKetua,
-            nomorSurat: autoNomor,
-            hariSidang: sidang?.hari_sidang || "",
-            tanggalSidang: sidang
-              ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(
-                  new Date(sidang.tanggal_sidang)
-                )
-              : "",
-            nilaiSidang: nilai,
-            ipkYudisium: ipk,
-            predikat: pred,
-            signatureType: "none",
-            isCollapsed: true,
-          })
-        );
-        setTimeout(resolve, 300);
-      });
-
-      const blob = await generatePdfBlob({
-        elementRef: { current: container as HTMLDivElement },
-        fileName: `SKL_${student.profile.nim}.pdf`,
-        pdfFormat: "a4",
-        pdfOrientation: "portrait",
-      });
-
-      if (blob) {
-        zip.file(`SKL_${student.profile.nim}_${student.profile.nama.replace(/\s+/g, "_")}.pdf`, blob);
-      }
-
-      root.unmount();
-      document.body.removeChild(container);
+  // Download SKL mahasiswa terpilih (ZIP)
+  const handlePrintBulk = async () => {
+    if (selectedStudents.size === 0) {
+      toast.error("Pilih minimal 1 mahasiswa untuk dicetak");
+      return;
     }
 
-    const zipBlob = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(zipBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `SKL_Mahasiswa_Lulus_${new Date().toISOString().slice(0, 10)}.zip`;
-    link.click();
-    URL.revokeObjectURL(url);
+    setIsGeneratingZip(true);
+    const toastId = toast.loading("Memulai pembuatan ZIP SKL...");
 
-    setIsDownloadingAll(false);
-    setDownloadProgress(0);
-    toast.success(`Berhasil mengunduh ${studentList.length} SKL.`);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const { createRoot } = await import("react-dom/client");
+      const zip = new JSZip();
+      const selectedList = Array.from(selectedStudents);
+      let processedCount = 0;
+
+      for (const studentId of selectedList) {
+        const student = studentList.find((s) => s.id === studentId);
+        if (!student) continue;
+
+        toast.loading(`Memproses ${processedCount + 1}/${selectedList.length}: ${student.profile.nama}`, {
+          id: toastId,
+        });
+
+        let kaprodi: Official | null = null;
+        if (student.profile.study_program_id) {
+          kaprodi = await getOfficialForDocument(student.profile.study_program_id);
+        }
+
+        const i = studentList.findIndex((s) => s.id === studentId);
+        const sidang = sidangMap[student.id];
+        const ipk = getIPKYudisium(student);
+        const pred = getPredikat(parseFloat(ipk), predikatList);
+        const nilai = getNilaiSkripsi(student);
+        const autoNomor = generateNomorSuratSKL(student, i >= 0 ? i : 0);
+
+        const container = document.createElement("div");
+        container.style.position = "absolute";
+        container.style.top = "0";
+        container.style.left = "-9999px";
+        container.style.width = "210mm";
+        document.body.appendChild(container);
+
+        const root = createRoot(container);
+
+        await new Promise<void>((resolve) => {
+          root.render(
+            React.createElement(PrintableSKL, {
+              loading: false,
+              currentStudent: student,
+              officialKaprodi: kaprodi,
+              officialKetua: officialKetua,
+              nomorSurat: autoNomor,
+              hariSidang: sidang?.hari_sidang || "",
+              tanggalSidang: sidang
+                ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(
+                    new Date(sidang.tanggal_sidang)
+                  )
+                : "",
+              nilaiSidang: nilai,
+              ipkYudisium: ipk,
+              predikat: pred,
+              signatureType: "none",
+              isCollapsed: true,
+            })
+          );
+          setTimeout(resolve, 300);
+        });
+
+        const blob = await generatePdfBlob({
+          elementRef: { current: container as HTMLDivElement },
+          fileName: `SKL_${student.profile.nim}.pdf`,
+          pdfFormat: "a4",
+          pdfOrientation: "portrait",
+        });
+
+        if (blob) {
+          zip.file(`SKL_${student.profile.nim}_${student.profile.nama.replace(/\s+/g, "_")}.pdf`, blob);
+        }
+
+        root.unmount();
+        document.body.removeChild(container);
+        processedCount++;
+      }
+
+      toast.loading("Mengompresi file ZIP...", { id: toastId });
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `SKL_Mahasiswa_Lulus_${new Date().toISOString().slice(0, 10)}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setSelectedStudents(new Set());
+      toast.success(`Berhasil mengunduh ZIP berisi ${processedCount} SKL`, { id: toastId });
+    } catch (error) {
+      console.error("Error generating ZIP:", error);
+      toast.error("Gagal membuat file ZIP", { id: toastId });
+    } finally {
+      setIsGeneratingZip(false);
+    }
   };
+
+  const customActions = selectedStudents.size > 0 && (
+    <Button
+      variant="outline" 
+      onClick={handlePrintBulk}
+      disabled={isGeneratingZip}
+      className="ml-2 bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+    >
+      {isGeneratingZip ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Membuat ZIP...
+        </>
+      ) : (
+        <>
+          <FileArchive className="mr-2 h-4 w-4" />
+          Cetak ZIP
+        </>
+      )}
+    </Button>
+  );
 
   const hasAnySignature =
     officialKaprodi?.ttd_basah_url || officialKaprodi?.ttd_digital_url ||
@@ -305,27 +346,9 @@ export default function AdminSKLView({
             onEdit={handleOpenPrintModal}
             actionLabel="Cetak SKL"
             actionIcon={<Printer className="w-3.5 h-3.5" />}
-            customActions={
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-border text-foreground font-medium rounded-lg hover:bg-muted/80 bg-background shadow-2xs h-9 px-3.5"
-                onClick={handleDownloadAll}
-                disabled={isDownloadingAll || studentList.length === 0}
-              >
-                {isDownloadingAll ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    Memproses ({downloadProgress}%)
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 text-foreground" />
-                    Unduh Semua
-                  </>
-                )}
-              </Button>
-            }
+            selectedIds={selectedStudents}
+            onSelectionChange={setSelectedStudents}
+            customActions={customActions}
           />
         </CardContent>
       </Card>

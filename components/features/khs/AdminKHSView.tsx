@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Printer, Loader2 } from "lucide-react";
+import { Printer, Loader2, FileArchive } from "lucide-react";
 
 import { getStudents, getStudyPrograms, getOfficialForDocument } from "@/app/actions/students";
 import { StudentData, StudyProgram, Official, TranscriptItem } from "@/lib/types";
@@ -43,6 +43,10 @@ export default function AdminKHSView({ initialStudents, initialStudyPrograms }: 
   
   const [isLoading, setIsLoading] = useState(false);
 
+  // Selection & Bulk ZIP State
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [isGeneratingZip, setIsGeneratingZip] = useState(false);
+
   // Modal Cetak State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null);
@@ -62,13 +66,12 @@ export default function AdminKHSView({ initialStudents, initialStudyPrograms }: 
   }, [official, signatureType]);
   const [totalPages, setTotalPages] = useState(1);
   
-  const { isPrinting, printPdf } = usePdfPrint();
+  const { isPrinting, printPdf, generatePdfBlob } = usePdfPrint();
   const printRef = useRef<HTMLDivElement>(null);
 
   const toastIdRef = useRef<string | number | null>(null);
 
   // === LOADING TOAST SIGNATURE ===
-  // === LOADING TOAST ===
   // === LOADING TOAST ===
   useEffect(() => {
      if (isSigLoading) {
@@ -141,6 +144,131 @@ export default function AdminKHSView({ initialStudents, initialStudyPrograms }: 
     setIsPrintModalOpen(false);
   };
 
+  // === BULK ZIP PRINT HANDLER ===
+  const handlePrintBulk = async () => {
+    if (selectedStudents.size === 0) {
+      toast.error("Pilih minimal 1 mahasiswa untuk dicetak");
+      return;
+    }
+
+    setIsGeneratingZip(true);
+    const toastId = toast.loading("Memulai pembuatan ZIP KHS...");
+
+    try {
+      const JSZip = (await import("jszip")).default;
+      const { createRoot } = await import("react-dom/client");
+      const zip = new JSZip();
+      const selectedList = Array.from(selectedStudents);
+      let processedCount = 0;
+
+      for (const studentId of selectedList) {
+        const s = studentList.find((item) => item.id === studentId);
+        if (!s) continue;
+
+        toast.loading(`Memproses ${processedCount + 1}/${selectedList.length}: ${s.profile.nama}`, {
+          id: toastId,
+        });
+
+        // Get kaprodi/official
+        let off: Official | null = null;
+        if (s.profile.study_program_id) {
+          off = await getOfficialForDocument(s.profile.study_program_id);
+        } else {
+          off = await getOfficialForDocument();
+        }
+
+        const currentSem = s.profile?.semester || 1;
+        const semData = (s.transcript || []).filter((t: TranscriptItem) => Number(t.smt) === currentSem);
+        const ipsVal = calculateIPS(s.transcript || [], currentSem).replace('.', ',');
+        const cumData = (s.transcript || []).filter((t: TranscriptItem) => Number(t.smt) <= currentSem && t.hm !== '-');
+        const ipkVal = calculateIPK(cumData).replace('.', ',');
+
+        // Create container
+        const container = document.createElement("div");
+        container.style.position = "absolute";
+        container.style.top = "0";
+        container.style.left = "-9999px";
+        container.style.width = "210mm";
+        document.body.appendChild(container);
+
+        const root = createRoot(container);
+
+        await new Promise<void>((resolve) => {
+          root.render(
+            React.createElement(PrintableKHS, {
+              loading: false,
+              currentStudent: s,
+              selectedSemester: currentSem,
+              semesterData: semData,
+              ips: ipsVal,
+              ipk: ipkVal,
+              signatureType: "none",
+              signatureBase64: null,
+              official: off,
+              isCollapsed: true,
+            })
+          );
+          setTimeout(resolve, 300);
+        });
+
+        const pdfBlob = await generatePdfBlob({
+          elementRef: { current: container },
+          fileName: "",
+          pdfFormat: "a4",
+          pdfOrientation: "portrait",
+        });
+
+        if (pdfBlob) {
+          const fileName = `KHS_${s.profile.nama.replace(/\s+/g, "_")}_${s.profile.nim}_Smt${currentSem}.pdf`;
+          zip.file(fileName, pdfBlob);
+        }
+
+        root.unmount();
+        document.body.removeChild(container);
+        processedCount++;
+      }
+
+      toast.loading("Mengompresi file ZIP...", { id: toastId });
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `KHS_Mahasiswa_${new Date().toISOString().split('T')[0]}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      setSelectedStudents(new Set());
+      toast.success(`Berhasil membuat ZIP berisi ${processedCount} file KHS`, { id: toastId });
+    } catch (error) {
+      console.error("Error generating ZIP:", error);
+      toast.error("Gagal membuat file ZIP", { id: toastId });
+    } finally {
+      setIsGeneratingZip(false);
+    }
+  };
+
+  const customActions = selectedStudents.size > 0 && (
+    <Button
+      variant="outline" 
+      onClick={handlePrintBulk}
+      disabled={isGeneratingZip}
+      className="ml-2 bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+    >
+      {isGeneratingZip ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Membuat ZIP...
+        </>
+      ) : (
+        <>
+          <FileArchive className="mr-2 h-4 w-4" />
+          Cetak ZIP
+        </>
+      )}
+    </Button>
+  );
+
   return (
     <>
       {/* HIDDEN PRINT COMPONENT */}
@@ -173,6 +301,9 @@ export default function AdminKHSView({ initialStudents, initialStudyPrograms }: 
             onEdit={handleOpenPrintModal}
             actionLabel="Cetak KHS"
             actionIcon={<Printer className="w-3.5 h-3.5 mr-2" />}
+            selectedIds={selectedStudents}
+            onSelectionChange={setSelectedStudents}
+            customActions={customActions}
           />
         </CardContent>
       </Card>

@@ -17,6 +17,8 @@ import {
 import Image from "next/image";
 import { User } from "lucide-react";
 
+import { Checkbox } from "@/components/ui/checkbox";
+
 interface StudentTableProps {
   data: StudentData[];
   studyPrograms: StudyProgram[]; // Tambah props ini
@@ -26,6 +28,10 @@ interface StudentTableProps {
   actionLabel?: string;
   actionIcon?: React.ReactNode;
   customActions?: React.ReactNode;
+
+  // Selection props
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function StudentTable({
@@ -36,7 +42,9 @@ export function StudentTable({
   onEdit,
   actionLabel = "Kelola Nilai",
   actionIcon, 
-  customActions 
+  customActions,
+  selectedIds,
+  onSelectionChange,
 }: StudentTableProps) {
   
   // Default Icon if not provided
@@ -76,13 +84,61 @@ export function StudentTable({
   const endIndex = startIndex + itemsPerPage;
   const currentData = filteredData.slice(startIndex, endIndex);
 
+  // === SELECTION LOGIC ===
+  const toggleStudent = (studentId: string) => {
+    if (!onSelectionChange || !selectedIds) return;
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    onSelectionChange(newSelected);
+  };
+
+  const toggleAll = (checked: boolean) => {
+    if (!onSelectionChange || !selectedIds) return;
+    if (!checked) {
+      onSelectionChange(new Set());
+    } else {
+      const newSelected = new Set(selectedIds);
+      filteredData.forEach((s) => newSelected.add(s.id));
+      onSelectionChange(newSelected);
+    }
+  };
+
+  const isAllSelected =
+    Boolean(selectedIds && onSelectionChange) &&
+    filteredData.length > 0 &&
+    filteredData.every((s) => selectedIds?.has(s.id));
+
   // === DEFINISI KOLOM ===
   const columns: Column<StudentData>[] = [
-    {
-      header: "#",
-      className: "w-[50px] text-center",
-      render: (_, index) => <span className="text-muted-foreground">{startIndex + index + 1}</span>
-    },
+    selectedIds && onSelectionChange
+      ? {
+          header: () => (
+            <Checkbox
+              checked={isAllSelected}
+              onCheckedChange={(checked) => toggleAll(checked === true)}
+              aria-label="Select all"
+              className="translate-y-[2px]"
+            />
+          ),
+          className: "w-[50px] text-center",
+          render: (row) => (
+            <Checkbox
+              checked={selectedIds.has(row.id)}
+              onCheckedChange={() => toggleStudent(row.id)}
+              aria-label="Select row"
+              className="translate-y-[2px]"
+            />
+          ),
+        }
+      : {
+          header: "#",
+          className: "w-[50px] text-center",
+          render: (_, index) => <span className="text-muted-foreground">{startIndex + index + 1}</span>,
+        },
     {
       header: "Mahasiswa",
       render: (row) => (
